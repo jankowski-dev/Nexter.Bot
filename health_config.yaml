@@ -1,0 +1,17 @@
+notion:
+  habits_db_id: ""
+  schedule_db_id: ""
+
+habits_fields:
+  name: "Название"
+  days_without: "Дней без"
+  counter: "Счетчик"
+
+schedule_fields:
+  name: "Название"
+  time: "Время"
+
+habits:
+  - "Курение"
+  - "Алкоголь"
+  - "Кофе"

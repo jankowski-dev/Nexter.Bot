@@ -1,0 +1,12 @@
+notion:
+  database_id: ""
+
+fields:
+  coin: "Монета"
+  orders: "Ордера"
+  active: ""
+  profit_all: ""
+
+tracking:
+  min_profit_change: 10
+  check_interval_minutes: 3

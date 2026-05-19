@@ -1,0 +1,78 @@
+"""
+bot.py — Точка входа.
+"""
+
+import os
+import sys
+import yaml
+from datetime import datetime
+from waitress import serve
+
+from app import app, PORT, TEST_SECRET
+import notion_reader
+import signal_tracker
+import health_notion
+import health
+from scheduler import start_scheduler
+
+
+def _load_yaml(path: str) -> dict:
+    base = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.join(base, path)
+    with open(full_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+REQUIRED_ENV = ["VIBER_TOKEN", "VIBER_USER_ID", "NOTION_API_KEY"]
+
+missing = [v for v in REQUIRED_ENV if not os.environ.get(v)]
+if not os.environ.get("NOTION_API_KEY") and not os.environ.get("NOTION_TOKEN"):
+    missing.append("NOTION_API_KEY или NOTION_TOKEN")
+else:
+    # Remove NOTION_API_KEY from missing if NOTION_TOKEN exists
+    if "NOTION_API_KEY" in missing and os.environ.get("NOTION_TOKEN"):
+        missing.remove("NOTION_API_KEY")
+
+if missing:
+    print(f"[STARTUP] ❌ КРИТИЧЕСКАЯ ОШИБКА: отсутствуют переменные: {', '.join(missing)}")
+    print("[STARTUP] Завершение работы.")
+    sys.exit(1)
+
+print(f"[STARTUP] ✅ Все обязательные переменные заданы.")
+
+if __name__ == "__main__":
+    # Load crypto config
+    crypto_cfg = notion_reader.load_config()
+    signal_tracker.set_min_change(float(crypto_cfg.get("tracking", {}).get("min_profit_change", 10)))
+    check_interval = int(crypto_cfg.get("tracking", {}).get("check_interval_minutes", 3))
+
+    # Load health configs
+    health_notion.load_config()
+    health.load_config()
+
+    health_cfg = _load_yaml("health_config.yaml")
+
+    print(f"[STARTUP] {datetime.now().strftime('%H:%M:%S')} 🚀 Запуск на порту {PORT}...")
+    print(f"[STARTUP] Crypto DB: {crypto_cfg.get('notion', {}).get('database_id', 'не задан')}")
+    print(f"[STARTUP] Health DB: {health_cfg.get('notion', {}).get('habits_db_id', 'не задан')}")
+    print(f"[STARTUP] Schedule DB: {health_cfg.get('notion', {}).get('schedule_db_id', 'не задан')}")
+    print(f"[STARTUP] Интервал проверки сделок: {check_interval} мин.")
+    print(f"[STARTUP] Порог изменения прибыли: ${crypto_cfg.get('tracking', {}).get('min_profit_change', 10)}")
+
+    if TEST_SECRET:
+        print(f"[STARTUP] 🔐 Тестовые эндпоинты защищены.")
+    else:
+        print(f"[STARTUP] ⚠️ TEST_SECRET не задан — тестовые эндпоинты открыты!")
+
+    # Инициализация состояний трекера
+    deals = notion_reader.read_deals()
+    if deals:
+        signal_tracker.check_signals(deals)
+        print(f"[STARTUP] Загружено {len(deals)} монет.")
+    else:
+        print(f"[STARTUP] Монеты не найдены.")
+
+    # Запуск планировщика
+    start_scheduler(check_interval)
+
+    print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен.")
+    serve(app, host="0.0.0.0", port=PORT)
