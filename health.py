@@ -34,12 +34,13 @@ def show_stats() -> None:
         return
 
     habits = _config.get("habits", [])
+    max_name = max((len(h) for h in habits), default=0)
     lines = ["📊 Статистика привычек", ""]
     for habit in habits:
         info = stats.get(habit, {})
         days = info.get("days_without", "—")
         days_str = str(days) if days != "" else "—"
-        lines.append(f"• {habit} — {days_str}")
+        lines.append(f"{habit:<{max_name}} │ {days_str}")
 
     notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
 
