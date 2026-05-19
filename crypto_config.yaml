@@ -1,11 +1,11 @@
 notion:
-  database_id: ""
+  database_id: "357c8f4b4994818ca5a3eb2791d0f6cc"
 
 fields:
-  coin: "Монета"
-  orders: "Ордера"
-  active: ""
-  profit_all: ""
+  coin: "Название"
+  orders: "Текущая прибыль [+] [F]"
+  active: "Активных ордеров [R]"
+  profit_all: "Текущая прибыль [F]"
 
 tracking:
   min_profit_change: 10
