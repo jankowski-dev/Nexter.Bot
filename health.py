@@ -12,6 +12,20 @@ import os
 
 _config: dict = {}
 
+_QUESTIONS = {
+    "Курение": "Вы сегодня не курили?",
+    "Алкоголь": "Вы сегодня не употребляли алкоголь?",
+    "Газировка": "Вы сегодня не пили газировку?",
+    "Сладости": "Вы сегодня не ели сладости?",
+    "Прогулка": "У вас сегодня была прогулка?",
+    "Кофе": "Вы сегодня не пили кофе?",
+    "Переедание": "Вы сегодня не переедали?",
+    "Велотренировка": "У вас сегодня была велотренировка?",
+    "Рутсам": "Вы сегодня не занимались рутсамом?",
+    "Мучное": "Вы сегодня не ели мучного?",
+    "Сахар": "Вы сегодня не употребляли сахар?",
+}
+
 
 def load_config(path: str = "health_config.yaml") -> dict:
     global _config
@@ -34,15 +48,18 @@ def show_stats() -> None:
         return
 
     habits = _config.get("habits", [])
-    max_name = max((len(h) for h in habits), default=0)
     lines = ["📊 Статистика привычек", ""]
     for habit in habits:
         info = stats.get(habit, {})
         days = info.get("days_without", "—")
         days_str = str(days) if days != "" else "—"
-        lines.append(f"{habit:<{max_name}} │ {days_str}")
+        lines.append(f"🔴 {days_str:>4}  ❘ {habit}")
 
     notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
+
+
+def _question(habit: str) -> str:
+    return _QUESTIONS.get(habit, f"Вы сегодня соблюдали «{habit.lower()}»?")
 
 
 def start_survey() -> None:
@@ -52,8 +69,7 @@ def start_survey() -> None:
         notify.send_viber_keyboard("Нет привычек в конфигурации.", kb.reminder_keyboard())
         return
     notify.send_viber_keyboard("Давайте проведём ежедневный опрос")
-    question = f"Вы употребляли «{habits[0].lower()}»?"
-    notify.send_viber_keyboard(question, kb.survey_keyboard())
+    notify.send_viber_keyboard(_question(habits[0]), kb.survey_keyboard())
 
 
 def handle_survey_answer(text: str, nav_callback) -> None:
@@ -61,15 +77,14 @@ def handle_survey_answer(text: str, nav_callback) -> None:
         return
 
     habits = _config.get("habits", [])
-    relapsed = text == "Да"
+    relapsed = text != "Да"
     survey_state.answer(relapsed)
 
     if survey_state.is_complete(len(habits)):
         _finish_survey(nav_callback)
     else:
         next_habit = habits[survey_state.index]
-        question = f"Вы употребляли «{next_habit.lower()}»?"
-        notify.send_viber_keyboard(question, kb.survey_keyboard())
+        notify.send_viber_keyboard(_question(next_habit), kb.survey_keyboard())
 
 
 def _finish_survey(nav_callback) -> None:
