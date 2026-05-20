@@ -13,18 +13,20 @@ import os
 _config: dict = {}
 
 _QUESTIONS = {
-    "Курение": "Вы сегодня не курили?",
-    "Алкоголь": "Вы сегодня не употребляли алкоголь?",
-    "Газировка": "Вы сегодня не пили газировку?",
-    "Сладости": "Вы сегодня не ели сладости?",
+    "Курение": "Вы сегодня курили?",
+    "Алкоголь": "Вы сегодня употребляли алкоголь?",
+    "Газировка": "Вы сегодня пили газировку?",
+    "Сладости": "Вы сегодня ели сладости?",
     "Прогулка": "У вас сегодня была прогулка?",
-    "Кофе": "Вы сегодня не пили кофе?",
-    "Переедание": "Вы сегодня не переедали?",
+    "Кофе": "Вы сегодня пили кофе?",
+    "Переедание": "Вы сегодня переедали?",
     "Велотренировка": "У вас сегодня была велотренировка?",
-    "Рутсам": "Вы сегодня не занимались рутсамом?",
-    "Мучное": "Вы сегодня не ели мучного?",
-    "Сахар": "Вы сегодня не употребляли сахар?",
+    "Рутсам": "Вы сегодня занимались рутсамом?",
+    "Мучное": "Вы сегодня ели мучное?",
+    "Сахар": "Вы сегодня употребляли сахар?",
 }
+
+_ACHIEVEMENT = {"Прогулка", "Велотренировка"}
 
 
 def load_config(path: str = "health_config.yaml") -> dict:
@@ -53,7 +55,7 @@ def show_stats() -> None:
         info = stats.get(habit, {})
         days = info.get("days_without", "—")
         days_str = str(days) if days != "" else "—"
-        lines.append(f"🔴 {days_str:>4}  ❘ {habit}")
+        lines.append(f"  {days_str:>4}  ❘ {habit}")
 
     notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
 
@@ -77,7 +79,11 @@ def handle_survey_answer(text: str, nav_callback) -> None:
         return
 
     habits = _config.get("habits", [])
-    relapsed = text != "Да"
+    current = habits[survey_state.index]
+    if current in _ACHIEVEMENT:
+        relapsed = text == "Нет"
+    else:
+        relapsed = text == "Да"
     survey_state.answer(relapsed)
 
     if survey_state.is_complete(len(habits)):
