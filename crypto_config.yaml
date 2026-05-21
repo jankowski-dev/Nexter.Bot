@@ -12,6 +12,6 @@ tracking:
   check_interval_minutes: 3
 
 stats:
-  database_id: ""
+  database_id: "357c8f4b499481bbb852d7d80d7ad363"
   name_field: "Name"
   value_field: "Итог"
