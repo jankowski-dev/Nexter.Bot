@@ -168,18 +168,84 @@ def test_schedule():
     if not _check_test_secret():
         return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
 
-    from health_notion import get_schedule
-    items = get_schedule()
-    if not items:
-        return jsonify({"status": "ok", "message": "Расписание пустое.", "items": []})
+    import yaml
+    import requests as req
 
-    count = int(request.args.get("count", "1"))
-    for item in items[:count]:
-        notify.send_viber_message(item["name"])
-        print(f"[TEST] Отправлено: {item['name']} ({item['time']})")
+    base = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(base, "health_config.yaml"), "r", encoding="utf-8") as f:
+        hc = yaml.safe_load(f)
 
-    return jsonify({
-        "status": "ok",
-        "sent": len(items[:count]),
-        "items": items,
-    })
+    db_id = hc.get("notion", {}).get("schedule_db_id", "")
+    name_field = hc.get("schedule_fields", {}).get("name", "Название")
+    time_field = hc.get("schedule_fields", {}).get("time", "Время")
+
+    if not db_id:
+        return jsonify({"status": "error", "message": "schedule_db_id не задан в health_config.yaml"})
+
+    api_key = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN") or ""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    try:
+        resp = req.post(
+            f"https://api.notion.com/v1/databases/{db_id}/query",
+            headers=headers,
+            json={"page_size": 100},
+            timeout=15,
+        )
+        raw_body = resp.text
+        if resp.status_code != 200:
+            return jsonify({
+                "status": "error",
+                "message": f"Notion вернул {resp.status_code}",
+                "body": raw_body,
+            })
+
+        data = resp.json()
+        results = data.get("results", [])
+        sample = results[0].get("properties", {}) if results else {}
+        field_names = list(sample.keys()) if sample else []
+
+        items = []
+        for page in results:
+            props = page.get("properties", {})
+
+            name = ""
+            name_prop = props.get(name_field, {})
+            if name_prop.get("type") == "title":
+                name = (name_prop.get("title") or [{}])[0].get("plain_text", "")
+            elif name_prop.get("type") == "rich_text":
+                name = (name_prop.get("rich_text") or [{}])[0].get("plain_text", "")
+
+            time_val = ""
+            time_prop = props.get(time_field, {})
+            if time_prop.get("type") == "rich_text":
+                time_val = (time_prop.get("rich_text") or [{}])[0].get("plain_text", "")
+            elif time_prop.get("type") == "title":
+                time_val = (time_prop.get("title") or [{}])[0].get("plain_text", "")
+
+            if name:
+                items.append({"name": name, "time": time_val or "?"})
+
+        count = int(request.args.get("count", "1"))
+        for item in items[:count]:
+            notify.send_viber_message(item["name"])
+
+        return jsonify({
+            "status": "ok",
+            "total": len(results),
+            "parsed": len(items),
+            "sent": len(items[:count]),
+            "db_fields": field_names,
+            "used_name_field": name_field,
+            "used_time_field": time_field,
+            "items": items,
+            "sample_props": {k: v.get("type") for k, v in sample.items()} if sample else {},
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
