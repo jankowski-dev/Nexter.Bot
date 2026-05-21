@@ -8,7 +8,7 @@ habits_fields:
   counter: "Срок [P]"
 
 schedule_fields:
-  name: "Напоминание"
+  name: "Название"
   time: "Время"
 
 habits:

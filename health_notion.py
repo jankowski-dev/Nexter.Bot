@@ -134,7 +134,7 @@ def get_schedule() -> list[dict]:
     items = []
     for page in data.get("results", []):
         props = page.get("properties", {})
-        name = _get_title(props, name_field)
+        name = _get_title(props, name_field) or _get_rich_text(props, name_field)
         time_val = _get_rich_text(props, time_field)
         if name and time_val:
             items.append({"name": name, "time": time_val})
