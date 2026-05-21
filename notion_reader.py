@@ -208,8 +208,8 @@ def read_deals() -> list[dict]:
 
 def read_stats() -> list[dict]:
     """
-    Читает базу торговой статистики (из секции stats конфига).
-    Возвращает список записей: [{"name": "...", "fields": {"label": "value", ...}}, ...].
+    Читает базу торговой статистики (секция stats конфига).
+    Возвращает [{"name": "BTC", "value": "42"}, ...].
     """
     api_key = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
     stats_cfg = _config.get("stats", {})
@@ -220,7 +220,7 @@ def read_stats() -> list[dict]:
         return []
 
     name_field = stats_cfg.get("name_field", "Название")
-    fields_cfg = stats_cfg.get("fields", [])
+    value_field = stats_cfg.get("value_field", "Статистика")
 
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
     headers = _get_notion_headers(api_key)
@@ -237,16 +237,9 @@ def read_stats() -> list[dict]:
     for page in data.get("results", []):
         props = page.get("properties", {})
         name = _extract_prop_value(props.get(name_field), debug_label=f"stats/name/{name_field}")
-        if not name:
-            continue
-
-        row = {"name": name, "fields": {}}
-        for fdef in fields_cfg:
-            nf = fdef.get("notion_field", "")
-            label = fdef.get("label", nf)
-            val = _extract_prop_value(props.get(nf), debug_label=f"stats/{nf}") or "—"
-            row["fields"][label] = val
-        result.append(row)
+        val = _extract_prop_value(props.get(value_field), debug_label=f"stats/val/{value_field}")
+        if name:
+            result.append({"name": name, "value": val or "—"})
 
     print(f"[NOTION] {datetime.now().strftime('%H:%M:%S')} ✅ Stats: {len(result)} записей.")
     return result
