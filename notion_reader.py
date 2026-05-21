@@ -204,3 +204,49 @@ def read_deals() -> list[dict]:
     except Exception as e:
         print(f"[NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Критическая ошибка: {e}")
         return []
+
+
+def read_stats() -> list[dict]:
+    """
+    Читает базу торговой статистики (из секции stats конфига).
+    Возвращает список записей: [{"name": "...", "fields": {"label": "value", ...}}, ...].
+    """
+    api_key = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")
+    stats_cfg = _config.get("stats", {})
+    database_id = stats_cfg.get("database_id", "")
+
+    if not api_key or not database_id:
+        print(f"[NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Stats DB не настроена.")
+        return []
+
+    name_field = stats_cfg.get("name_field", "Название")
+    fields_cfg = stats_cfg.get("fields", [])
+
+    url = f"https://api.notion.com/v1/databases/{database_id}/query"
+    headers = _get_notion_headers(api_key)
+
+    try:
+        response = requests.post(url, headers=headers, json={"page_size": 100}, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        print(f"[NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка чтения stats DB.")
+        return []
+
+    result = []
+    for page in data.get("results", []):
+        props = page.get("properties", {})
+        name = _extract_prop_value(props.get(name_field), debug_label=f"stats/name/{name_field}")
+        if not name:
+            continue
+
+        row = {"name": name, "fields": {}}
+        for fdef in fields_cfg:
+            nf = fdef.get("notion_field", "")
+            label = fdef.get("label", nf)
+            val = _extract_prop_value(props.get(nf), debug_label=f"stats/{nf}") or "—"
+            row["fields"][label] = val
+        result.append(row)
+
+    print(f"[NOTION] {datetime.now().strftime('%H:%M:%S')} ✅ Stats: {len(result)} записей.")
+    return result

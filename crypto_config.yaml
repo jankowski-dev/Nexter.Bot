@@ -10,3 +10,10 @@ fields:
 tracking:
   min_profit_change: 10
   check_interval_minutes: 3
+
+stats:
+  database_id: ""
+  name_field: "Название"
+  fields:
+    - notion_field: ""
+      label: ""

@@ -17,10 +17,22 @@ def show_report() -> None:
 
 
 def show_trade_stats() -> None:
-    notify.send_viber_keyboard(
-        "📈 Торговая статистика за всё время\n\nЭтот раздел в разработке.",
-        kb.crypto_keyboard(),
-    )
+    rows = notion_reader.read_stats()
+    if not rows:
+        notify.send_viber_keyboard(
+            "📈 Торговая статистика\n\nНет данных. Проверь настройки stats в crypto_config.yaml.",
+            kb.crypto_keyboard(),
+        )
+        return
+
+    lines = ["📈 Торговая статистика"]
+    for row in rows:
+        lines.append("")
+        lines.append(row["name"])
+        for label, val in row["fields"].items():
+            lines.append(f"  {label}: {val}")
+
+    notify.send_viber_keyboard("\n".join(lines), kb.crypto_keyboard())
 
 
 def toggle_silence(is_silence: bool) -> None:
