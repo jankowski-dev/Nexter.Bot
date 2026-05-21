@@ -57,13 +57,13 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
     except Exception:
         items = []
 
-    for item in items:
+    for i, item in enumerate(items):
         try:
             h, m = map(int, item["time"].split(":"))
         except ValueError:
             print(f"[SCHED] ⚠️ Неверное время для '{item['name']}': {item['time']}")
             continue
-        job_id = f"schedule_{item['name']}"
+        job_id = f"schedule_{i}"
         scheduler.add_job(
             lambda name=item["name"]: _send_reminder(name),
             "cron",
