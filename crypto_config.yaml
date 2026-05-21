@@ -13,5 +13,5 @@ tracking:
 
 stats:
   database_id: ""
-  name_field: "Название"
-  value_field: "Статистика"
+  name_field: "Name"
+  value_field: "Итог"

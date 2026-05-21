@@ -27,7 +27,9 @@ def show_trade_stats() -> None:
 
     lines = ["📈 Торговая статистика", ""]
     for row in rows:
-        lines.append(f"  {row['name']} — {row['value']}")
+        lines.append(row["name"])
+        lines.append(row["value"])
+        lines.append("")
 
     notify.send_viber_keyboard("\n".join(lines), kb.crypto_keyboard())
 
