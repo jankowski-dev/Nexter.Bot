@@ -161,3 +161,25 @@ def test_reset():
         "message": "Все состояния трекера сброшены.",
         "tracker_state": signal_tracker.get_status(),
     })
+
+
+@app.route("/test/schedule", methods=["GET"])
+def test_schedule():
+    if not _check_test_secret():
+        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
+
+    from health_notion import get_schedule
+    items = get_schedule()
+    if not items:
+        return jsonify({"status": "ok", "message": "Расписание пустое.", "items": []})
+
+    count = int(request.args.get("count", "1"))
+    for item in items[:count]:
+        notify.send_viber_message(item["name"])
+        print(f"[TEST] Отправлено: {item['name']} ({item['time']})")
+
+    return jsonify({
+        "status": "ok",
+        "sent": len(items[:count]),
+        "items": items,
+    })
