@@ -55,7 +55,13 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
     try:
         items = get_schedule()
     except Exception:
+        print(f"[SCHED] ⚠️ Не удалось загрузить расписание из Notion.")
         items = []
+
+    if items:
+        print(f"[SCHED] Загружено {len(items)} напоминаний.")
+    else:
+        print(f"[SCHED] Расписание пустое или ошибка загрузки.")
 
     for i, item in enumerate(items):
         try:
