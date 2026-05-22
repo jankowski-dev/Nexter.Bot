@@ -66,6 +66,10 @@ def webhook():
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Разговор начат.")
                     handle_conversation_started()
 
+                elif event_type == "webhook":
+                    print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Webhook event.")
+                    notify.send_viber_keyboard("Бот активен. Выбери раздел:", kb.root_keyboard())
+
                 else:
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Событие: {event_type}")
 

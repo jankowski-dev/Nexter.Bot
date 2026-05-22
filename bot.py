@@ -14,6 +14,8 @@ import notion_reader
 import signal_tracker
 import health_notion
 import health
+import notify
+import keyboards as kb
 from scheduler import start_scheduler
 
 
@@ -88,6 +90,9 @@ if __name__ == "__main__":
             print(f"[STARTUP] Webhook: {r.status_code} {r.text[:200]}")
         except Exception as e:
             print(f"[STARTUP] ⚠️ Webhook registration failed: {e}")
+
+    # Сразу шлём клавиатуру при старте
+    notify.send_viber_keyboard("Бот запущен. Выбери раздел:", kb.root_keyboard())
 
     print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен.")
     serve(app, host="0.0.0.0", port=PORT)
