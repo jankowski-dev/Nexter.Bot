@@ -5,6 +5,7 @@ bot.py — Точка входа.
 import os
 import sys
 import yaml
+import requests
 from datetime import datetime
 from waitress import serve
 
@@ -73,6 +74,20 @@ if __name__ == "__main__":
 
     # Запуск планировщика
     start_scheduler(check_interval)
+
+    # Регистрация вебхука Viber (чтобы conversation_started работал)
+    webhook_url = os.environ.get("WEBHOOK_URL", "")
+    if webhook_url:
+        try:
+            r = requests.post(
+                "https://chatapi.viber.com/pa/set_webhook",
+                headers={"X-Viber-Auth-Token": os.environ.get("VIBER_TOKEN", "")},
+                json={"url": webhook_url, "event_types": ["delivered", "seen", "failed", "conversation_started"]},
+                timeout=15,
+            )
+            print(f"[STARTUP] Webhook: {r.status_code} {r.text[:200]}")
+        except Exception as e:
+            print(f"[STARTUP] ⚠️ Webhook registration failed: {e}")
 
     print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен.")
     serve(app, host="0.0.0.0", port=PORT)
