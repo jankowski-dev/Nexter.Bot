@@ -20,7 +20,7 @@ def set_profit_step(value: float) -> None:
 
 def _get_state(coin: str) -> dict:
     if coin not in coin_states:
-        coin_states[coin] = {"last_orders_usd": 0.0, "last_threshold": 0.0}
+        coin_states[coin] = {"last_orders_usd": 0.0, "last_threshold": 0.0, "was_positive": False}
     return coin_states[coin]
 
 
@@ -65,19 +65,22 @@ def check_signals(deals: list[dict], skip_notify: bool = False) -> list[str]:
 
         state = _get_state(coin)
         last_threshold = state.get("last_threshold", 0.0)
+        was_positive = state.get("was_positive", False)
 
         if orders is None or orders <= 0:
-            if last_threshold > 0:
+            if was_positive:
                 triggered = True
                 state["last_threshold"] = 0.0
+                state["was_positive"] = False
                 state["last_orders_usd"] = orders
         else:
             level = int(orders / step) * step
             level_f = float(level)
-            if level_f > last_threshold:
+            if level_f != last_threshold:
                 triggered = True
                 state["last_threshold"] = level_f
-                state["last_orders_usd"] = orders
+            state["was_positive"] = True
+            state["last_orders_usd"] = orders
 
     if not triggered or skip_notify:
         return []
