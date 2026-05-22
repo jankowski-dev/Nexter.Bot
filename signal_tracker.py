@@ -1,6 +1,7 @@
 """
 signal_tracker.py — Логика отслеживания прибыли ордеров.
-Конфигурация min_profit_change из crypto_config.yaml.
+Уведомления при пересечении порогов с шагом 5 USD: +5, +10, +15...
+При уходе в минус — одно уведомление, затем тишина до +5.
 """
 
 from datetime import datetime
@@ -9,17 +10,17 @@ silence_mode: bool = False
 coin_states: dict[str, dict] = {}
 last_deals: list[dict] = []
 
-_min_change: float = 10.0
+_profit_step: float = 5.0
 
 
-def set_min_change(value: float) -> None:
-    global _min_change
-    _min_change = value
+def set_profit_step(value: float) -> None:
+    global _profit_step
+    _profit_step = value
 
 
 def _get_state(coin: str) -> dict:
     if coin not in coin_states:
-        coin_states[coin] = {"last_orders_usd": 0.0}
+        coin_states[coin] = {"last_orders_usd": 0.0, "last_threshold": 0.0}
     return coin_states[coin]
 
 
@@ -52,6 +53,7 @@ def check_signals(deals: list[dict], skip_notify: bool = False) -> list[str]:
     if silence_mode:
         return []
 
+    step = _profit_step
     triggered = False
 
     for deal in deals:
@@ -62,15 +64,20 @@ def check_signals(deals: list[dict], skip_notify: bool = False) -> list[str]:
             continue
 
         state = _get_state(coin)
-        last_orders = state.get("last_orders_usd", 0.0)
-        diff = abs(orders - last_orders)
+        last_threshold = state.get("last_threshold", 0.0)
 
-        if orders > 0 and last_orders <= 0:
-            triggered = True
-        elif diff >= _min_change and orders != 0:
-            triggered = True
-
-        state["last_orders_usd"] = orders
+        if orders is None or orders <= 0:
+            if last_threshold > 0:
+                triggered = True
+                state["last_threshold"] = 0.0
+                state["last_orders_usd"] = orders
+        else:
+            level = int(orders / step) * step
+            level_f = float(level)
+            if level_f > last_threshold:
+                triggered = True
+                state["last_threshold"] = level_f
+                state["last_orders_usd"] = orders
 
     if not triggered or skip_notify:
         return []
@@ -82,7 +89,7 @@ def check_signals(deals: list[dict], skip_notify: bool = False) -> list[str]:
 
         if not coin or orders is None:
             continue
-        if orders > 0:
+        if orders is not None and orders > 0:
             report_lines.append(f"{coin}: 🟢 {orders:.1f} USD")
 
     if not report_lines:
@@ -133,10 +140,11 @@ def get_status() -> str:
     lines = []
     for coin, state in coin_states.items():
         last = state.get("last_orders_usd", 0.0)
+        thr = state.get("last_threshold", 0.0)
         emoji = "🟢" if last > 0 else "⚪"
-        lines.append(f"{coin}: {emoji} {last:.1f} USD")
+        lines.append(f"{coin}: {emoji} {last:.1f} USD (порог {thr:.0f})")
 
-    status = f"📊 Состояние трекера (порог Δ${_min_change:.0f}):\n" + "\n".join(lines)
+    status = f"📊 Состояние трекера (шаг ${_profit_step:.0f}):\n" + "\n".join(lines)
     if silence_mode:
         status += "\n\n🔇 Режим тишины ВКЛЮЧЕН"
     return status

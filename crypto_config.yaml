@@ -8,7 +8,7 @@ fields:
   profit_all: "Текущая прибыль [F]"
 
 tracking:
-  min_profit_change: 10
+  profit_step: 5
   check_interval_minutes: 3
 
 stats:
