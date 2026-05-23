@@ -1,5 +1,6 @@
 """
-scheduler.py — APScheduler: периодическая проверка сделок + напоминания распорядка.
+scheduler.py — APScheduler: проверка сделок + напоминания распорядка.
+Расписание обновляется из Notion каждые 10 минут.
 """
 
 from datetime import datetime
@@ -37,8 +38,41 @@ def _scheduled_crypto_check() -> None:
 
 
 def _send_reminder(name: str) -> None:
-    print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Напоминание: {name}")
+    print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
     notify.send_viber_keyboard(name, kb.root_keyboard())
+
+
+def _refresh_schedule() -> None:
+    """Перечитывает расписание из Notion и обновляет cron-задачи."""
+    for job in scheduler.get_jobs():
+        if job.id.startswith("schedule_"):
+            job.remove()
+
+    try:
+        items = get_schedule()
+    except Exception:
+        print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
+        return
+
+    if not items:
+        print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Расписание пустое.")
+        return
+
+    for i, item in enumerate(items):
+        try:
+            h, m = map(int, item["time"].split(":"))
+        except ValueError:
+            print(f"[SCHED] ⚠️ Неверное время: '{item['name']}' — {item['time']}")
+            continue
+        scheduler.add_job(
+            lambda name=item["name"]: _send_reminder(name),
+            "cron",
+            hour=h,
+            minute=m,
+            id=f"schedule_{i}",
+            replace_existing=True,
+        )
+        print(f"[SCHED] {item['time']} — {item['name']}")
 
 
 def start_scheduler(check_interval_minutes: int = 3) -> None:
@@ -53,33 +87,17 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
     )
     print(f"[SCHED] Проверка сделок: каждые {check_interval_minutes} мин.")
 
-    try:
-        items = get_schedule()
-    except Exception:
-        print(f"[SCHED] ⚠️ Не удалось загрузить расписание из Notion.")
-        items = []
+    scheduler.add_job(
+        _refresh_schedule,
+        "interval",
+        minutes=10,
+        id="schedule_refresh",
+        max_instances=1,
+        coalesce=True,
+    )
+    print(f"[SCHED] Обновление расписания: каждые 10 мин.")
 
-    if items:
-        print(f"[SCHED] Загружено {len(items)} напоминаний.")
-    else:
-        print(f"[SCHED] Расписание пустое или ошибка загрузки.")
-
-    for i, item in enumerate(items):
-        try:
-            h, m = map(int, item["time"].split(":"))
-        except ValueError:
-            print(f"[SCHED] ⚠️ Неверное время для '{item['name']}': {item['time']}")
-            continue
-        job_id = f"schedule_{i}"
-        scheduler.add_job(
-            lambda name=item["name"]: _send_reminder(name),
-            "cron",
-            hour=h,
-            minute=m,
-            id=job_id,
-            replace_existing=True,
-        )
-        print(f"[SCHED] Напоминание '{item['name']}' в {item['time']}")
+    _refresh_schedule()
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")
