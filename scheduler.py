@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import notify
 import notion_reader
 import signal_tracker
+import keyboards as kb
 from health_notion import get_schedule
 
 scheduler = BackgroundScheduler()
@@ -30,14 +31,14 @@ def _scheduled_crypto_check() -> None:
 
     if messages:
         for msg in messages:
-            notify.send_viber_message(msg)
+            notify.send_viber_keyboard(msg, kb.root_keyboard())
     else:
         print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Без изменений.")
 
 
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Напоминание: {name}")
-    notify.send_viber_message(name)
+    notify.send_viber_keyboard(name, kb.root_keyboard())
 
 
 def start_scheduler(check_interval_minutes: int = 3) -> None:
