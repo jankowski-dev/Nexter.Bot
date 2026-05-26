@@ -44,15 +44,17 @@ def _send_reminder(name: str) -> None:
 
 def _refresh_schedule() -> None:
     """Перечитывает расписание из Notion и обновляет cron-задачи."""
-    for job in scheduler.get_jobs():
-        if job.id.startswith("schedule_"):
-            job.remove()
-
     try:
         items = get_schedule()
     except Exception:
         print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
         return
+
+    # Сначала удаляем старые задачи расписания
+    for job in scheduler.get_jobs():
+        jid = job.id
+        if jid.startswith("reminder_"):
+            job.remove()
 
     if not items:
         print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Расписание пустое.")
@@ -69,7 +71,7 @@ def _refresh_schedule() -> None:
             "cron",
             hour=h,
             minute=m,
-            id=f"schedule_{i}",
+            id=f"reminder_{i}",
             replace_existing=True,
         )
         print(f"[SCHED] {item['time']} — {item['name']}")
@@ -91,7 +93,7 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
         _refresh_schedule,
         "interval",
         minutes=10,
-        id="schedule_refresh",
+        id="refresh_schedule",
         max_instances=1,
         coalesce=True,
     )

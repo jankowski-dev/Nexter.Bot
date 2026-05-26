@@ -60,7 +60,11 @@ def webhook():
                     msg = data.get("message", {})
                     text = msg.get("text", "").strip()
                     if text:
-                        handle_message(text)
+                        try:
+                            handle_message(text)
+                        except Exception as e:
+                            print(f"[WEBHOOK] Ошибка в handle_message: {e}")
+                            notify.send_viber_keyboard("⚠️ Ошибка. Попробуй ещё раз.", kb.root_keyboard())
 
                 elif event_type == "conversation_started":
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Разговор начат.")
@@ -68,13 +72,16 @@ def webhook():
 
                 elif event_type == "webhook":
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Webhook event.")
-                    notify.send_viber_keyboard("Бот активен. Выбери раздел:", kb.root_keyboard())
 
                 else:
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Событие: {event_type}")
 
         except Exception as e:
             print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка: {e}")
+            try:
+                notify.send_viber_keyboard("⚠️ Сбой. Попробуй ещё раз.", kb.root_keyboard())
+            except Exception:
+                pass
 
         return jsonify({"status": 0})
 
