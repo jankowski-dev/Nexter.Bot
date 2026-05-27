@@ -88,6 +88,19 @@ def handle_message(text: str) -> None:
         elif t == "Внести данные":
             _nav = Nav.SURVEY
             health.start_survey()
+        elif t == "Голодание":
+            import fasting
+            prev = fasting.reset()
+            if prev > 0:
+                notify.send_viber_keyboard(
+                    f"🍽 Приём пищи! Прошло {prev:.1f} ч. Счётчик сброшен.",
+                    kb.reminder_keyboard(),
+                )
+            else:
+                notify.send_viber_keyboard(
+                    "🍽 Голодание запущено! Счётчик пошёл.",
+                    kb.reminder_keyboard(),
+                )
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())

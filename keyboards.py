@@ -84,7 +84,13 @@ def reminder_keyboard():
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
             {
-                "Columns": 6, "Rows": 1,
+                "Columns": 3, "Rows": 1,
+                "ActionType": "reply", "ActionBody": "Голодание",
+                "Text": "🍽 Голодание", "TextSize": "regular",
+                "BgColor": "#F6F6F6", "TextHAlign": "center",
+            },
+            {
+                "Columns": 3, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Назад",
                 "Text": "← Назад", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
