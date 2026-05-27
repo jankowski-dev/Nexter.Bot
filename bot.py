@@ -94,5 +94,5 @@ if __name__ == "__main__":
     # Сразу шлём клавиатуру при старте
     notify.send_viber_keyboard("Бот запущен. Выбери раздел:", kb.root_keyboard())
 
-    print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен.")
-    serve(app, host="0.0.0.0", port=PORT)
+    print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен (8 потоков).")
+    serve(app, host="0.0.0.0", port=PORT, threads=8)
