@@ -14,6 +14,7 @@ import notion_reader
 import signal_tracker
 import health_notion
 import health
+import fasting
 import notify
 import keyboards as kb
 from scheduler import start_scheduler
@@ -51,6 +52,12 @@ if __name__ == "__main__":
     # Load health configs
     health_notion.load_config()
     health.load_config()
+
+    # Восстановить счётчик голодания из Notion
+    fasting_min = health_notion.get_fasting_counter()
+    if fasting_min > 0:
+        fasting.init_from_notion(fasting_min)
+        print(f"[STARTUP] Голодание: восстановлено {fasting_min} мин. из Notion.")
 
     health_cfg = _load_yaml("health_config.yaml")
 

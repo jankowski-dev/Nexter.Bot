@@ -10,7 +10,8 @@ import notify
 import notion_reader
 import signal_tracker
 import keyboards as kb
-from health_notion import get_schedule
+from health_notion import get_schedule, set_fasting_counter
+import fasting
 
 scheduler = BackgroundScheduler()
 
@@ -40,6 +41,14 @@ def _scheduled_crypto_check() -> None:
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
     notify.send_viber_keyboard(name, kb.root_keyboard())
+
+
+def _fasting_tick() -> None:
+    """Каждую минуту синхронизирует счётчик голодания с Notion."""
+    if not fasting.is_active():
+        return
+    m = int(fasting.minutes())
+    set_fasting_counter(m)
 
 
 def _refresh_schedule() -> None:
@@ -98,6 +107,17 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
         coalesce=True,
     )
     print(f"[SCHED] Обновление расписания: каждые 10 мин.")
+
+    scheduler.add_job(
+        _fasting_tick,
+        "interval",
+        minutes=1,
+        id="fasting_tick",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=30,
+    )
+    print(f"[SCHED] Тик голодания: каждую минуту.")
 
     _refresh_schedule()
 

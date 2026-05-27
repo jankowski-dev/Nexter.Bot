@@ -3,7 +3,7 @@ fasting.py — Интервальное голодание.
 Хранит время последнего сброса (приёма пищи) и считает часы с того момента.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 _start_time: datetime | None = None
 
@@ -20,6 +20,11 @@ def reset() -> float:
     global _start_time
     prev = hours()
     _start_time = datetime.now()
+    try:
+        from health_notion import set_fasting_counter
+        set_fasting_counter(0)
+    except Exception:
+        pass
     return prev
 
 
@@ -33,6 +38,13 @@ def hours() -> float:
 
 def is_active() -> bool:
     return _start_time is not None
+
+
+def init_from_notion(minutes_val: int) -> None:
+    """Восстановить _start_time из сохранённого в Notion значения (в минутах)."""
+    global _start_time
+    if minutes_val > 0:
+        _start_time = datetime.now() - timedelta(minutes=minutes_val)
 
 
 def minutes() -> float:
