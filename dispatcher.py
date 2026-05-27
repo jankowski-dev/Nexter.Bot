@@ -90,22 +90,8 @@ def handle_message(text: str) -> None:
             health.start_survey()
         elif t == "Голодание":
             import fasting
-            fasting.start()
-            notify.send_viber_keyboard(fasting.status(), kb.reminder_keyboard())
-        elif t == "Сброс":
-            import fasting
-            prev_h = fasting.reset()
-            prev_m = int(prev_h * 60)
-            if prev_m > 0:
-                notify.send_viber_keyboard(
-                    f"🍽 Счётчик сброшен. Прошло {prev_m} мин. Начат заново.",
-                    kb.reminder_keyboard(),
-                )
-            else:
-                notify.send_viber_keyboard(
-                    "🍽 Счётчик сброшен. Голодание начато заново.",
-                    kb.reminder_keyboard(),
-                )
+            fasting.reset()
+            notify.send_viber_keyboard("🍽 Счётчик голодания сброшен.", kb.reminder_keyboard())
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())

@@ -40,20 +40,15 @@ def is_active() -> bool:
     return _start_time is not None
 
 
-def init_from_notion(minutes_val: int) -> None:
-    """Восстановить _start_time из сохранённого в Notion значения (в минутах)."""
+def init_from_notion(hours_val: int) -> None:
+    """Восстановить _start_time из сохранённого в Notion значения (в часах)."""
     global _start_time
-    if minutes_val > 0:
-        _start_time = datetime.now() - timedelta(minutes=minutes_val)
-
-
-def minutes() -> float:
-    """Сколько минут прошло с последнего сброса."""
-    return hours() * 60.0
+    if hours_val > 0:
+        _start_time = datetime.now() - timedelta(hours=hours_val)
 
 
 def status() -> str:
-    m = minutes()
-    if m < 1:
-        return f"🍽 Голодание: 0 мин."
-    return f"🍽 Голодание: {int(m)} мин."
+    h = hours()
+    if h < 1:
+        return f"🍽 Голодание: 0 ч."
+    return f"🍽 Голодание: {int(h)} ч."

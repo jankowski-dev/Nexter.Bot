@@ -44,11 +44,11 @@ def _send_reminder(name: str) -> None:
 
 
 def _fasting_tick() -> None:
-    """Каждую минуту синхронизирует счётчик голодания с Notion."""
+    """Каждый час синхронизирует счётчик голодания с Notion."""
     if not fasting.is_active():
         return
-    m = int(fasting.minutes())
-    set_fasting_counter(m)
+    h = int(fasting.hours())
+    set_fasting_counter(h)
 
 
 def _refresh_schedule() -> None:
@@ -111,13 +111,13 @@ def start_scheduler(check_interval_minutes: int = 3) -> None:
     scheduler.add_job(
         _fasting_tick,
         "interval",
-        minutes=1,
+        minutes=60,
         id="fasting_tick",
         max_instances=1,
         coalesce=True,
-        misfire_grace_time=30,
+        misfire_grace_time=120,
     )
-    print(f"[SCHED] Тик голодания: каждую минуту.")
+    print(f"[SCHED] Тик голодания: каждый час.")
 
     _refresh_schedule()
 

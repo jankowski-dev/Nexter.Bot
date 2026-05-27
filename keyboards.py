@@ -69,7 +69,7 @@ def reminder_keyboard():
         "Type": "keyboard",
         "DefaultHeight": False,
         "ButtonsGroupColumns": 6,
-        "ButtonsGroupRows": 3,
+        "ButtonsGroupRows": 2,
         "Buttons": [
             {
                 "Columns": 3, "Rows": 1,
@@ -91,12 +91,6 @@ def reminder_keyboard():
             },
             {
                 "Columns": 3, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Сброс",
-                "Text": "🔄 Сброс", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 6, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Назад",
                 "Text": "← Назад", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
