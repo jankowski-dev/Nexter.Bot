@@ -8,6 +8,13 @@ from datetime import datetime
 _start_time: datetime | None = None
 
 
+def start() -> None:
+    """Запустить счётчик (если ещё не запущен)."""
+    global _start_time
+    if _start_time is None:
+        _start_time = datetime.now()
+
+
 def reset() -> float:
     """Сбросить счётчик (пользователь поел). Возвращает часы, прошедшие с предыдущего сброса."""
     global _start_time
