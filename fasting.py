@@ -35,8 +35,13 @@ def is_active() -> bool:
     return _start_time is not None
 
 
+def minutes() -> float:
+    """Сколько минут прошло с последнего сброса."""
+    return hours() * 60.0
+
+
 def status() -> str:
-    h = hours()
-    if h < 1:
-        return f"🍽 Голодание: {int(h * 60)} мин."
-    return f"🍽 Голодание: {h:.1f} ч."
+    m = minutes()
+    if m < 1:
+        return f"🍽 Голодание: 0 мин."
+    return f"🍽 Голодание: {int(m)} мин."
