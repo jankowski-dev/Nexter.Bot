@@ -6,6 +6,7 @@ from survey_state import survey_state
 from health_notion import get_habits_stats, update_all_counters
 import keyboards as kb
 import notify
+import threading
 import yaml
 import os
 
@@ -39,25 +40,27 @@ def load_config(path: str = "health_config.yaml") -> dict:
 
 
 def show_stats() -> None:
-    try:
-        stats = get_habits_stats()
-    except Exception:
-        notify.send_viber_keyboard("⚠️ Не удалось загрузить статистику.", kb.reminder_keyboard())
-        return
+    def _do():
+        try:
+            stats = get_habits_stats()
+        except Exception:
+            notify.send_viber_keyboard("⚠️ Не удалось загрузить статистику.", kb.reminder_keyboard())
+            return
 
-    if not stats:
-        notify.send_viber_keyboard("Нет данных о привычках.", kb.reminder_keyboard())
-        return
+        if not stats:
+            notify.send_viber_keyboard("Нет данных о привычках.", kb.reminder_keyboard())
+            return
 
-    habits = _config.get("habits", [])
-    lines = ["📊 Статистика привычек", ""]
-    for habit in habits:
-        info = stats.get(habit, {})
-        days = info.get("days_without", "—")
-        days_str = str(days) if days != "" else "—"
-        lines.append(f"  {days_str:>4}  ❘ {habit}")
+        habits = _config.get("habits", [])
+        lines = ["📊 Статистика привычек", ""]
+        for habit in habits:
+            info = stats.get(habit, {})
+            days = info.get("days_without", "—")
+            days_str = str(days) if days != "" else "—"
+            lines.append(f"  {days_str:>4}  ❘ {habit}")
 
-    notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
+        notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
+    threading.Thread(target=_do, daemon=True).start()
 
 
 def _question(habit: str) -> str:
@@ -94,24 +97,26 @@ def handle_survey_answer(text: str, nav_callback) -> None:
 
 
 def _finish_survey(nav_callback) -> None:
-    habits = _config.get("habits", [])
-    try:
-        stats = get_habits_stats()
-    except Exception:
+    def _do():
+        habits = _config.get("habits", [])
+        try:
+            stats = get_habits_stats()
+        except Exception:
+            survey_state.reset()
+            notify.send_viber_keyboard("⚠️ Не удалось сохранить результаты.", kb.reminder_keyboard())
+            nav_callback("reminder")
+            return
+
+        updates = {}
+        for i, habit in enumerate(habits):
+            updates[habit] = survey_state.answers.get(i, False)
+
+        try:
+            update_all_counters(updates, stats)
+        except Exception:
+            pass
+
         survey_state.reset()
-        notify.send_viber_keyboard("⚠️ Не удалось сохранить результаты.", kb.reminder_keyboard())
+        notify.send_viber_keyboard("✅ Опрос пройден!", kb.reminder_keyboard())
         nav_callback("reminder")
-        return
-
-    updates = {}
-    for i, habit in enumerate(habits):
-        updates[habit] = survey_state.answers.get(i, False)
-
-    try:
-        update_all_counters(updates, stats)
-    except Exception:
-        pass
-
-    survey_state.reset()
-    notify.send_viber_keyboard("✅ Опрос пройден!", kb.reminder_keyboard())
-    nav_callback("reminder")
+    threading.Thread(target=_do, daemon=True).start()

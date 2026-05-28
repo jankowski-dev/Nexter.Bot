@@ -4,6 +4,7 @@ fasting.py — Интервальное голодание.
 """
 
 from datetime import datetime, timedelta
+import threading
 
 _start_time: datetime | None = None
 
@@ -20,11 +21,13 @@ def reset() -> float:
     global _start_time
     prev = hours()
     _start_time = datetime.now()
-    try:
-        from health_notion import set_fasting_counter
-        set_fasting_counter(0)
-    except Exception:
-        pass
+    def _notion_reset():
+        try:
+            from health_notion import set_fasting_counter
+            set_fasting_counter(0)
+        except Exception:
+            pass
+    threading.Thread(target=_notion_reset, daemon=True).start()
     return prev
 
 
