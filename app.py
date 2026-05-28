@@ -56,6 +56,7 @@ def webhook():
                 if event_type == "message":
                     msg = data.get("message", {})
                     text = msg.get("text", "").strip()
+                    print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} 📨 message: '{text}' (len={len(text)})")
                     if text:
                         try:
                             handle_message(text)

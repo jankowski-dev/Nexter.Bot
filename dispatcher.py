@@ -68,6 +68,8 @@ def handle_message(text: str) -> None:
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
+        else:
+            notify.send_viber_keyboard("💰 Crypto — отслеживание сделок:", kb.crypto_keyboard())
 
     elif _nav == Nav.REMINDER:
         if t == "Статистика":
@@ -78,6 +80,8 @@ def handle_message(text: str) -> None:
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
+        else:
+            notify.send_viber_keyboard("🏥 Привычки и распорядок дня:", kb.reminder_keyboard())
 
 
 def _goto(state: str) -> None:
