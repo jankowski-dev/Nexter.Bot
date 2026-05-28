@@ -42,14 +42,12 @@ def handle_message(text: str) -> None:
     print(f"[DISPATCH] {datetime.now().strftime('%H:%M:%S')} nav={_nav} text='{text}'")
 
     t = text.strip()
-    t_lower = t.lower()
 
     if _nav == Nav.SURVEY:
         from survey_state import survey_state as ss
         health.handle_survey_answer(t, _goto)
         if ss.active:
             return
-        # survey finished, _goto already called
         return
 
     if _nav == Nav.ROOT:
@@ -59,25 +57,14 @@ def handle_message(text: str) -> None:
         elif t == "Reminder":
             _nav = Nav.REMINDER
             notify.send_viber_keyboard("🏥 Привычки и распорядок дня:", kb.reminder_keyboard())
-        elif t in ("Отчет", "Статус") or t_lower in ("отчет", "отчёт", "report", "статус", "status"):
-            crypto.show_report()
-            notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
-        elif t in ("Тишина",) or t_lower in ("тишина", "silence", "стоп", "stop"):
-            crypto.toggle_silence(True)
-        elif t in ("Активация",) or t_lower in ("активация", "activation", "старт", "start"):
-            crypto.toggle_silence(False)
         else:
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
 
     elif _nav == Nav.CRYPTO:
-        if t in ("Отчет", "Статус") or t_lower in ("отчет", "отчёт", "report", "статус", "status"):
+        if t == "Текущий отчет":
             crypto.show_report()
         elif t == "Статистика":
             crypto.show_trade_stats()
-        elif t in ("Тишина",) or t_lower in ("тишина", "silence", "стоп", "stop"):
-            crypto.toggle_silence(True)
-        elif t in ("Активация",) or t_lower in ("активация", "activation", "старт", "start"):
-            crypto.toggle_silence(False)
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
@@ -88,10 +75,6 @@ def handle_message(text: str) -> None:
         elif t == "Внести данные":
             _nav = Nav.SURVEY
             health.start_survey()
-        elif t == "Голодание":
-            import fasting
-            fasting.reset()
-            notify.send_viber_keyboard("🍽 Счётчик голодания сброшен.", kb.reminder_keyboard())
         elif t == "Назад":
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())

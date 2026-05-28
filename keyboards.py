@@ -2,8 +2,6 @@
 keyboards.py — Все Viber-клавиатуры для бота.
 """
 
-import signal_tracker
-
 
 def root_keyboard():
     return {
@@ -27,37 +25,22 @@ def root_keyboard():
 
 
 def crypto_keyboard():
-    silence = signal_tracker.is_silence()
-    toggle_text = "🔔 Активация" if silence else "🔇 Тишина"
-    toggle_body = "Активация" if silence else "Тишина"
     return {
         "Type": "keyboard",
         "DefaultHeight": False,
         "ButtonsGroupColumns": 6,
-        "ButtonsGroupRows": 2,
+        "ButtonsGroupRows": 1,
         "Buttons": [
             {
-                "Columns": 2, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Отчет",
-                "Text": "📊 Отчет", "TextSize": "regular",
+                "Columns": 3, "Rows": 1,
+                "ActionType": "reply", "ActionBody": "Текущий отчет",
+                "Text": "📊 Тек. отчет", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
             {
-                "Columns": 2, "Rows": 1,
+                "Columns": 3, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Статистика",
-                "Text": "📈 Стат.", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 2, "Rows": 1,
-                "ActionType": "reply", "ActionBody": toggle_body,
-                "Text": toggle_text, "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 6, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Назад",
-                "Text": "← Назад", "TextSize": "regular",
+                "Text": "📈 Статистика", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
         ],
@@ -84,13 +67,7 @@ def reminder_keyboard():
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
             {
-                "Columns": 3, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Голодание",
-                "Text": "🍽 Голодание", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 3, "Rows": 1,
+                "Columns": 6, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Назад",
                 "Text": "← Назад", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",

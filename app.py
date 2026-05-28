@@ -3,8 +3,6 @@ app.py — Flask-приложение: вебхук Viber, health-check, тес�
 """
 
 import os
-import hashlib
-import hmac
 from datetime import datetime
 
 from flask import Flask, request, jsonify
@@ -31,7 +29,6 @@ def index():
     return jsonify({
         "status": "running",
         "service": "Nexter.Health — Crypto + Habits Tracker",
-        "silence_mode": signal_tracker.is_silence(),
     })
 
 
@@ -99,65 +96,13 @@ def test_check():
         return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
 
     deals = notion_reader.read_deals()
-    messages = signal_tracker.check_signals(deals) if deals else []
-
-    send_to_viber = request.args.get("send", "false").strip().lower() == "true"
-    if send_to_viber and messages:
-        for msg in messages:
-            notify.send_viber_message(msg)
+    signal_tracker.last_deals = deals
 
     return jsonify({
         "status": "ok",
         "deals_count": len(deals),
         "deals": deals,
-        "messages_count": len(messages),
-        "messages": messages,
-        "silence_mode": signal_tracker.is_silence(),
-        "sent_to_viber": send_to_viber,
-    })
-
-
-@app.route("/test/simulate", methods=["GET"])
-def test_simulate():
-    if not _check_test_secret():
-        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
-
-    coin = request.args.get("coin", "").strip()
-    orders_str = request.args.get("orders", "").strip()
-
-    if not coin:
-        return jsonify({"error": "bad_request", "message": "Параметр 'coin' обязателен"}), 400
-    if not orders_str:
-        return jsonify({"error": "bad_request", "message": "Параметр 'orders' обязателен"}), 400
-
-    try:
-        orders = float(orders_str.replace(",", "."))
-    except ValueError:
-        return jsonify({"error": "bad_request", "message": "orders должен быть числом"}), 400
-
-    profit_all = None
-    profit_all_str = request.args.get("profit_all", "").strip()
-    if profit_all_str:
-        try:
-            profit_all = float(profit_all_str.replace(",", "."))
-        except ValueError:
-            return jsonify({"error": "bad_request", "message": "profit_all должен быть числом"}), 400
-
-    fake_deal = {"coin": coin, "orders_usd": orders, "profit_all_usd": profit_all}
-    messages = signal_tracker.check_signals([fake_deal])
-
-    send_to_viber = request.args.get("send", "false").strip().lower() == "true"
-    if send_to_viber and messages:
-        for msg in messages:
-            notify.send_viber_message(msg)
-
-    return jsonify({
-        "status": "ok",
-        "simulated_deal": fake_deal,
-        "messages_count": len(messages),
-        "messages": messages,
-        "tracker_state": signal_tracker.get_status(),
-        "sent_to_viber": send_to_viber,
+        "report": signal_tracker.get_unified_report(deals),
     })
 
 
@@ -170,7 +115,6 @@ def test_reset():
     return jsonify({
         "status": "ok",
         "message": "Все состояния трекера сброшены.",
-        "tracker_state": signal_tracker.get_status(),
     })
 
 
@@ -259,4 +203,3 @@ def test_schedule():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
-

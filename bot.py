@@ -14,7 +14,6 @@ import notion_reader
 import signal_tracker
 import health_notion
 import health
-import fasting
 import notify
 import keyboards as kb
 from scheduler import start_scheduler
@@ -46,18 +45,10 @@ print(f"[STARTUP] ✅ Все обязательные переменные за�
 if __name__ == "__main__":
     # Load crypto config
     crypto_cfg = notion_reader.load_config()
-    signal_tracker.set_profit_step(float(crypto_cfg.get("tracking", {}).get("profit_step", 5)))
-    check_interval = int(crypto_cfg.get("tracking", {}).get("check_interval_minutes", 3))
 
     # Load health configs
     health_notion.load_config()
     health.load_config()
-
-    # Восстановить счётчик голодания из Notion
-    fasting_h = health_notion.get_fasting_counter()
-    if fasting_h > 0:
-        fasting.init_from_notion(fasting_h)
-        print(f"[STARTUP] Голодание: восстановлено {fasting_h} ч. из Notion.")
 
     health_cfg = _load_yaml("health_config.yaml")
 
@@ -65,24 +56,14 @@ if __name__ == "__main__":
     print(f"[STARTUP] Crypto DB: {crypto_cfg.get('notion', {}).get('database_id', 'не задан')}")
     print(f"[STARTUP] Health DB: {health_cfg.get('notion', {}).get('habits_db_id', 'не задан')}")
     print(f"[STARTUP] Schedule DB: {health_cfg.get('notion', {}).get('schedule_db_id', 'не задан')}")
-    print(f"[STARTUP] Интервал проверки сделок: {check_interval} мин.")
-    print(f"[STARTUP] Шаг прибыли для уведомлений: ${crypto_cfg.get('tracking', {}).get('profit_step', 5)}")
 
     if TEST_SECRET:
         print(f"[STARTUP] 🔐 Тестовые эндпоинты защищены.")
     else:
         print(f"[STARTUP] ⚠️ TEST_SECRET не задан — тестовые эндпоинты открыты!")
 
-    # Инициализация состояний трекера
-    deals = notion_reader.read_deals()
-    if deals:
-        signal_tracker.check_signals(deals)
-        print(f"[STARTUP] Загружено {len(deals)} монет.")
-    else:
-        print(f"[STARTUP] Монеты не найдены.")
-
     # Запуск планировщика
-    start_scheduler(check_interval)
+    start_scheduler()
 
     # Регистрация вебхука Viber (чтобы conversation_started работал)
     webhook_url = os.environ.get("WEBHOOK_URL", "")
