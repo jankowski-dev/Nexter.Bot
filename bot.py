@@ -68,20 +68,22 @@ if __name__ == "__main__":
     # Регистрация вебхука Viber
     webhook_url = os.environ.get("WEBHOOK_URL", "")
     viber_token = os.environ.get("VIBER_TOKEN", "")
+    print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")
+    print(f"[STARTUP] VIBER_TOKEN задан: {bool(viber_token)}")
     if webhook_url and viber_token:
         try:
-            print(f"[STARTUP] Регистрация вебхука: {webhook_url}")
             r = requests.post(
                 "https://chatapi.viber.com/pa/set_webhook",
                 headers={"X-Viber-Auth-Token": viber_token},
-                json={"url": webhook_url},
+                json={"url": webhook_url, "event_types": ["message", "conversation_started", "delivered", "seen", "failed", "subscribed", "unsubscribed"]},
                 timeout=15,
             )
-            print(f"[STARTUP] Webhook ответ: {r.status_code} {r.text[:300]}")
+            print(f"[STARTUP] Webhook HTTP {r.status_code}")
+            print(f"[STARTUP] Webhook body: {r.text}")
         except Exception as e:
-            print(f"[STARTUP] ⚠️ Webhook registration failed: {e}")
+            print(f"[STARTUP] ⚠️ Webhook registration FAILED: {e}")
     else:
-        print(f"[STARTUP] ⚠️ WEBHOOK_URL или VIBER_TOKEN не заданы — вебхук не зарегистрирован!")
+        print(f"[STARTUP] ❌❌❌ WEBHOOK_URL или VIBER_TOKEN не заданы — кнопки работать НЕ БУДУТ!")
 
     # Сразу шлём клавиатуру при старте
     notify.send_viber_keyboard("Бот запущен. Выбери раздел:", kb.root_keyboard())

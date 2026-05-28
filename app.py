@@ -29,7 +29,14 @@ def index():
     return jsonify({
         "status": "running",
         "service": "Nexter.Health — Crypto + Habits Tracker",
+        "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
     })
+
+
+@app.route("/ping", methods=["GET"])
+def ping():
+    print(f"[APP] {datetime.now().strftime('%H:%M:%S')} GET /ping")
+    return "pong", 200
 
 
 @app.route("/webhook", methods=["GET", "POST", "HEAD"])
@@ -38,9 +45,11 @@ def webhook():
         return "", 200
 
     if request.method == "GET":
+        print(f"[APP] {datetime.now().strftime('%H:%M:%S')} GET /webhook — ok")
         return jsonify({"status": "ok"})
 
     if request.method == "POST":
+        print(f"[APP] {datetime.now().strftime('%H:%M:%S')} POST /webhook")
         signature = request.headers.get("X-Viber-Content-Signature", "")
         body = request.get_data(as_text=True)
 
