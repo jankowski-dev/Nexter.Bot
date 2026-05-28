@@ -11,6 +11,10 @@ import threading
 import requests
 from datetime import datetime
 
+_send_queue: queue.Queue = queue.Queue(maxsize=256)
+_worker_started = False
+_worker_lock = threading.Lock()
+
 
 def _start_worker() -> None:
     global _worker_started
