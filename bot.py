@@ -65,19 +65,23 @@ if __name__ == "__main__":
     # Запуск планировщика
     start_scheduler()
 
-    # Регистрация вебхука Viber (чтобы conversation_started работал)
+    # Регистрация вебхука Viber
     webhook_url = os.environ.get("WEBHOOK_URL", "")
-    if webhook_url:
+    viber_token = os.environ.get("VIBER_TOKEN", "")
+    if webhook_url and viber_token:
         try:
+            print(f"[STARTUP] Регистрация вебхука: {webhook_url}")
             r = requests.post(
                 "https://chatapi.viber.com/pa/set_webhook",
-                headers={"X-Viber-Auth-Token": os.environ.get("VIBER_TOKEN", "")},
-                json={"url": webhook_url, "event_types": ["delivered", "seen", "failed", "conversation_started"]},
+                headers={"X-Viber-Auth-Token": viber_token},
+                json={"url": webhook_url},
                 timeout=15,
             )
-            print(f"[STARTUP] Webhook: {r.status_code} {r.text[:200]}")
+            print(f"[STARTUP] Webhook ответ: {r.status_code} {r.text[:300]}")
         except Exception as e:
             print(f"[STARTUP] ⚠️ Webhook registration failed: {e}")
+    else:
+        print(f"[STARTUP] ⚠️ WEBHOOK_URL или VIBER_TOKEN не заданы — вебхук не зарегистрирован!")
 
     # Сразу шлём клавиатуру при старте
     notify.send_viber_keyboard("Бот запущен. Выбери раздел:", kb.root_keyboard())
