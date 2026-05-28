@@ -1,13 +1,11 @@
 """
-scheduler.py — APScheduler: напоминания распорядка + перерегистрация вебхука.
+scheduler.py — APScheduler: напоминания распорядка.
 Расписание обновляется из Notion каждые 10 минут.
 """
 
-import os
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
-import requests
 import notify
 import keyboards as kb
 from health_notion import get_schedule
@@ -18,24 +16,6 @@ scheduler = BackgroundScheduler()
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
     notify.send_viber_keyboard(name, kb.root_keyboard())
-
-
-def _refresh_webhook() -> None:
-    """Периодически перерегистрирует вебхук, чтобы Viber не терял его."""
-    webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
-    viber_token = os.environ.get("VIBER_TOKEN", "").strip()
-    if not webhook_url or not viber_token:
-        return
-    try:
-        r = requests.post(
-            "https://chatapi.viber.com/pa/set_webhook",
-            headers={"X-Viber-Auth-Token": viber_token},
-            json={"url": webhook_url, "event_types": ["message", "conversation_started", "delivered", "seen", "failed", "subscribed", "unsubscribed"]},
-            timeout=15,
-        )
-        print(f"[SCHED] Webhook refresh: HTTP {r.status_code} {r.text[:200]}")
-    except Exception as e:
-        print(f"[SCHED] ⚠️ Webhook refresh failed: {e}")
 
 
 def _refresh_schedule() -> None:
@@ -82,16 +62,6 @@ def start_scheduler() -> None:
         coalesce=True,
     )
     print(f"[SCHED] Обновление расписания: каждые 10 мин.")
-
-    scheduler.add_job(
-        _refresh_webhook,
-        "interval",
-        minutes=30,
-        id="refresh_webhook",
-        max_instances=1,
-        coalesce=True,
-    )
-    print(f"[SCHED] Перерегистрация вебхука: каждые 30 мин.")
 
     _refresh_schedule()
 

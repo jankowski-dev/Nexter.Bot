@@ -40,11 +40,11 @@ def show_stats() -> None:
         try:
             stats = get_habits_stats()
         except Exception:
-            notify.send_viber_message("⚠️ Не удалось загрузить статистику.")
+            notify.send_viber_keyboard("⚠️ Не удалось загрузить статистику.", kb.reminder_keyboard())
             return
 
         if not stats:
-            notify.send_viber_message("Нет данных о привычках.")
+            notify.send_viber_keyboard("Нет данных о привычках.", kb.reminder_keyboard())
             return
 
         habits = _config.get("habits", [])
@@ -55,7 +55,7 @@ def show_stats() -> None:
             days_str = str(days) if days != "" else "—"
             lines.append(f"  {days_str:>4}  ❘ {habit}")
 
-        notify.send_viber_message("\n".join(lines))
+        notify.send_viber_keyboard("\n".join(lines), kb.reminder_keyboard())
     threading.Thread(target=_do, daemon=True).start()
 
 
