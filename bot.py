@@ -69,8 +69,8 @@ if __name__ == "__main__":
     start_scheduler()
 
     # Регистрация вебхука Viber
-    webhook_url = os.environ.get("WEBHOOK_URL", "")
-    viber_token = os.environ.get("VIBER_TOKEN", "")
+    webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+    viber_token = os.environ.get("VIBER_TOKEN", "").strip()
     print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")
     print(f"[STARTUP] VIBER_TOKEN задан: {bool(viber_token)}")
     if webhook_url and viber_token:
