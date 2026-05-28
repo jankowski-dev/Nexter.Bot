@@ -29,7 +29,7 @@ def crypto_keyboard():
         "Type": "keyboard",
         "DefaultHeight": False,
         "ButtonsGroupColumns": 6,
-        "ButtonsGroupRows": 1,
+        "ButtonsGroupRows": 2,
         "Buttons": [
             {
                 "Columns": 3, "Rows": 1,
@@ -41,6 +41,12 @@ def crypto_keyboard():
                 "Columns": 3, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Статистика",
                 "Text": "📈 Статистика", "TextSize": "regular",
+                "BgColor": "#F6F6F6", "TextHAlign": "center",
+            },
+            {
+                "Columns": 6, "Rows": 1,
+                "ActionType": "reply", "ActionBody": "Назад",
+                "Text": "← Назад", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
         ],

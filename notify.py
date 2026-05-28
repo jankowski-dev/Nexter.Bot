@@ -5,19 +5,11 @@ notify.py — Отправка уведомлений в Viber через фон
 """
 
 import os
-import hashlib
 import time
 import queue
 import threading
 import requests
 from datetime import datetime
-
-_SENT_HASHES: dict[str, float] = {}
-_DEDUP_WINDOW_SEC = 10
-
-_send_queue: queue.Queue = queue.Queue(maxsize=256)
-_worker_started = False
-_worker_lock = threading.Lock()
 
 
 def _start_worker() -> None:
@@ -91,20 +83,11 @@ def _send_payload_sync(payload: dict, max_retries: int = 2, retry_delay: int = 1
 
     text_preview = payload.get("text", "")[:100].replace("\n", " ")
 
-    msg_hash = hashlib.new("md5", payload.get("text", "").encode(), usedforsecurity=False).hexdigest()
-    now = time.time()
-    for h in list(_SENT_HASHES.keys()):
-        if now - _SENT_HASHES[h] > _DEDUP_WINDOW_SEC:
-            del _SENT_HASHES[h]
-    if msg_hash in _SENT_HASHES:
-        return True
-
     for attempt in range(1, max_retries + 1):
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
 
             if response.status_code == 200:
-                _SENT_HASHES[msg_hash] = now
                 print(f"[NOTIFY] {datetime.now().strftime('%H:%M:%S')} ✅ Отправлено: {text_preview}...")
                 return True
             else:
