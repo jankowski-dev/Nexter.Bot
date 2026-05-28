@@ -37,11 +37,17 @@ def handle_conversation_started() -> None:
     )
 
 
+def _matches(text: str, *keywords: str) -> bool:
+    """Проверяет, содержит ли text любое из ключевых слов (без учёта регистра)."""
+    t = text.lower()
+    return any(kw in t for kw in keywords)
+
+
 def handle_message(text: str) -> None:
     global _nav
-    print(f"[DISPATCH] {datetime.now().strftime('%H:%M:%S')} nav={_nav} text='{text}'")
-
     t = text.strip()
+    t_lower = t.lower()
+    print(f"[DISPATCH] {datetime.now().strftime('%H:%M:%S')} nav={_nav} text='{t}'")
 
     if _nav == Nav.SURVEY:
         from survey_state import survey_state as ss
@@ -51,36 +57,39 @@ def handle_message(text: str) -> None:
         return
 
     if _nav == Nav.ROOT:
-        if t == "Crypto":
+        if _matches(t, "crypto"):
             _nav = Nav.CRYPTO
             notify.send_viber_keyboard("💰 Crypto — отслеживание сделок:", kb.crypto_keyboard())
-        elif t == "Reminder":
+        elif _matches(t, "reminder"):
             _nav = Nav.REMINDER
             notify.send_viber_keyboard("🏥 Привычки и распорядок дня:", kb.reminder_keyboard())
         else:
+            print(f"[DISPATCH] ROOT неизвестная кнопка: '{t}'")
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
 
     elif _nav == Nav.CRYPTO:
-        if t == "Текущий отчет":
+        if _matches(t, "отчет", "отчёт"):
             crypto.show_report()
-        elif t == "Статистика":
+        elif _matches(t, "статистика", "стат"):
             crypto.show_trade_stats()
-        elif t == "Назад":
+        elif _matches(t, "назад"):
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
         else:
+            print(f"[DISPATCH] CRYPTO неизвестная кнопка: '{t}'")
             notify.send_viber_keyboard("💰 Crypto — отслеживание сделок:", kb.crypto_keyboard())
 
     elif _nav == Nav.REMINDER:
-        if t == "Статистика":
+        if _matches(t, "статистика", "стат"):
             health.show_stats()
-        elif t == "Внести данные":
+        elif _matches(t, "внести", "данные"):
             _nav = Nav.SURVEY
             health.start_survey()
-        elif t == "Назад":
+        elif _matches(t, "назад"):
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
         else:
+            print(f"[DISPATCH] REMINDER неизвестная кнопка: '{t}'")
             notify.send_viber_keyboard("🏥 Привычки и распорядок дня:", kb.reminder_keyboard())
 
 
