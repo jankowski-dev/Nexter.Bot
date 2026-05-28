@@ -2,6 +2,9 @@
 bot.py — Точка входа.
 """
 
+import sys
+sys.stdout.reconfigure(line_buffering=True)
+
 import os
 import sys
 import yaml
