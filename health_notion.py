@@ -180,6 +180,7 @@ def get_schedule() -> list[dict]:
         props = page.get("properties", {})
         name = _get_title(props, name_field) or _get_rich_text(props, name_field)
         time_val = _get_rich_text(props, actual_time_field) or _get_title(props, actual_time_field)
+        time_val = time_val.strip()
         if name and time_val:
             items.append({"name": name, "time": time_val})
     return items
