@@ -20,36 +20,41 @@ def _send_reminder(name: str) -> None:
 
 def _refresh_schedule() -> None:
     """Перечитывает расписание из Notion и обновляет cron-задачи."""
+    now = datetime.now()
+    print(f"[SCHED] {now.strftime('%H:%M:%S')} — обновление расписания...")
     try:
         items = get_schedule()
     except Exception:
-        print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
+        print(f"[SCHED] {now.strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
         return
 
-    for job in scheduler.get_jobs():
-        jid = job.id
-        if jid.startswith("reminder_"):
-            job.remove()
-
-    if not items:
-        print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} Расписание пустое.")
-        return
-
-    for i, item in enumerate(items):
+    # Собираем ID активных задач
+    active_ids = set()
+    for item in items:
         try:
             h, m = map(int, item["time"].split(":"))
         except ValueError:
-            print(f"[SCHED] ⚠️ Неверное время: '{item['name']}' — {item['time']}")
             continue
+        job_id = f"reminder_{item['name']}_{item['time']}".replace(" ", "_")
+        active_ids.add(job_id)
         scheduler.add_job(
             lambda name=item["name"]: _send_reminder(name),
             "cron",
             hour=h,
             minute=m,
-            id=f"reminder_{i}",
+            id=job_id,
             replace_existing=True,
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
         )
         print(f"[SCHED] {item['time']} — {item['name']}")
+
+    # Удаляем джобы, которых больше нет в задачах
+    for job in scheduler.get_jobs():
+        if job.id.startswith("reminder_") and job.id not in active_ids:
+            job.remove()
+            print(f"[SCHED] Удалена: {job.id}")
 
 
 def start_scheduler() -> None:
