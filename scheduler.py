@@ -68,7 +68,7 @@ def start_scheduler() -> None:
     )
     print(f"[SCHED] Обновление расписания: каждую минуту.")
 
-    _refresh_schedule()
-
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")
+
+    _refresh_schedule()
