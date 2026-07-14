@@ -120,27 +120,60 @@ def get_schedule() -> list[dict]:
         print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ schedule_db_id не задан.")
         return []
 
+    today = datetime.now().strftime("%Y-%m-%d")
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
     headers = _notion_headers()
 
+    payload: dict = {"page_size": 100}
+
     try:
-        response = requests.post(url, headers=headers, json={"page_size": 100}, timeout=15)
+        # Первый запрос без фильтра — чтобы узнать имена полей
+        response = requests.post(url, headers=headers, json=payload, timeout=15)
         response.raise_for_status()
         data = response.json()
     except Exception:
         print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса расписания.")
         return []
 
-    # Найти реальное имя поля времени (может отличаться пробелами) из первой страницы
     results = data.get("results", [])
     actual_time_field = time_field_hint
+    date_field = ""
+
     if results:
         sample_props = results[0].get("properties", {})
         for pname, pval in sample_props.items():
-            if time_field_hint.lower() in pname.lower() and pval.get("type") in ("rich_text", "title"):
+            ptype = pval.get("type", "")
+            if time_field_hint.lower() in pname.lower() and ptype in ("rich_text", "title"):
                 actual_time_field = pname
-                print(f"[HEALTH_NOTION] Поле времени: '{pname}'")
-                break
+            if ("дата" in pname.lower() or "date" in pname.lower()) and ptype == "date":
+                date_field = pname
+
+    # Если нашли поле даты, фильтруем по сегодня
+    if date_field:
+        payload["filter"] = {
+            "property": date_field,
+            "date": {"equals": today},
+        }
+        print(f"[HEALTH_NOTION] Фильтр по дате: {date_field} = {today}")
+        results = []
+        has_more = True
+        start_cursor = None
+        try:
+            while has_more:
+                if start_cursor:
+                    payload["start_cursor"] = start_cursor
+                response = requests.post(url, headers=headers, json=payload, timeout=15)
+                response.raise_for_status()
+                data = response.json()
+                results.extend(data.get("results", []))
+                has_more = data.get("has_more", False)
+                start_cursor = data.get("next_cursor")
+        except Exception:
+            print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса с фильтром.")
+            return []
+
+    if actual_time_field != time_field_hint:
+        print(f"[HEALTH_NOTION] Поле времени: '{actual_time_field}'")
 
     items = []
     for page in results:
