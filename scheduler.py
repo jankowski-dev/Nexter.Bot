@@ -67,12 +67,12 @@ def start_scheduler() -> None:
     scheduler.add_job(
         _refresh_schedule,
         "interval",
-        minutes=1,
+        minutes=60,
         id="refresh_schedule",
         max_instances=1,
         coalesce=True,
     )
-    print(f"[SCHED] Обновление расписания: каждую минуту.")
+    print(f"[SCHED] Обновление расписания: раз в час.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")
