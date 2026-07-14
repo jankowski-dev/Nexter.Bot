@@ -9,7 +9,7 @@ habits_fields:
 
 schedule_fields:
   name: "Название"
-  time: "Время"
+  time: "Время "
 
 habits:
   - "Курение"

@@ -113,8 +113,8 @@ def update_all_counters(updates: dict, stats: dict) -> None:
 def get_schedule() -> list[dict]:
     database_id = _config.get("notion", {}).get("schedule_db_id", "")
     fields_cfg = _config.get("schedule_fields", {})
-    name_field = fields_cfg.get("name", "Название")
-    time_field = fields_cfg.get("time", "Время")
+    name_field = fields_cfg.get("name", "Название").strip()
+    time_field_hint = fields_cfg.get("time", "Время").strip()
 
     if not database_id:
         print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ schedule_db_id не задан.")
@@ -131,11 +131,22 @@ def get_schedule() -> list[dict]:
         print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса расписания.")
         return []
 
+    # Найти реальное имя поля времени (может отличаться пробелами) из первой страницы
+    results = data.get("results", [])
+    actual_time_field = time_field_hint
+    if results:
+        sample_props = results[0].get("properties", {})
+        for pname, pval in sample_props.items():
+            if time_field_hint.lower() in pname.lower() and pval.get("type") in ("rich_text", "title"):
+                actual_time_field = pname
+                print(f"[HEALTH_NOTION] Поле времени: '{pname}'")
+                break
+
     items = []
-    for page in data.get("results", []):
+    for page in results:
         props = page.get("properties", {})
         name = _get_title(props, name_field) or _get_rich_text(props, name_field)
-        time_val = _get_rich_text(props, time_field) or _get_title(props, time_field)
+        time_val = _get_rich_text(props, actual_time_field) or _get_title(props, actual_time_field)
         if name and time_val:
             items.append({"name": name, "time": time_val})
     return items
