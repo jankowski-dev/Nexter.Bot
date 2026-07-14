@@ -151,12 +151,10 @@ def get_schedule() -> list[dict]:
     # Если нашли поле даты, фильтруем по сегодня
     if date_field:
         payload["filter"] = {
-            "and": [
-                {"property": date_field, "date": {"on_or_after": today}},
-                {"property": date_field, "date": {"on_or_before": today}},
-            ]
+            "property": date_field,
+            "date": {"equals": today},
         }
-        print(f"[HEALTH_NOTION] Фильтр по дате: {date_field} = {today} (диапазон)")
+        print(f"[HEALTH_NOTION] Фильтр по дате: {date_field} = {today}")
         results = []
         has_more = True
         start_cursor = None
