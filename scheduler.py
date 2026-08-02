@@ -28,6 +28,7 @@ def _daily_habit_increment() -> None:
     """Каждый день в 22:00 +1 ко всем привычкам."""
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 📊 +1 к привычкам...")
     increment_all_habit_counters()
+    notify.send_viber_message("📊 Данные по привычкам за сегодня обновлены.")
 
 
 def _refresh_schedule() -> None:
