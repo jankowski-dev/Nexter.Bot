@@ -13,7 +13,6 @@ class Nav:
     ROOT = "root"
     CRYPTO = "crypto"
     REMINDER = "reminder"
-    SURVEY = "survey"
 
 
 _nav = Nav.ROOT
@@ -38,7 +37,6 @@ def handle_conversation_started() -> None:
 
 
 def _matches(text: str, *keywords: str) -> bool:
-    """Проверяет, содержит ли text любое из ключевых слов (без учёта регистра)."""
     t = text.lower()
     return any(kw in t for kw in keywords)
 
@@ -46,15 +44,7 @@ def _matches(text: str, *keywords: str) -> bool:
 def handle_message(text: str) -> None:
     global _nav
     t = text.strip()
-    t_lower = t.lower()
     print(f"[DISPATCH] {datetime.now().strftime('%H:%M:%S')} nav={_nav} text='{t}'")
-
-    if _nav == Nav.SURVEY:
-        from survey_state import survey_state as ss
-        health.handle_survey_answer(t, _goto)
-        if ss.active:
-            return
-        return
 
     if _nav == Nav.ROOT:
         if _matches(t, "crypto"):
@@ -82,17 +72,9 @@ def handle_message(text: str) -> None:
     elif _nav == Nav.REMINDER:
         if _matches(t, "статистика", "стат"):
             health.show_stats()
-        elif _matches(t, "внести", "данные"):
-            _nav = Nav.SURVEY
-            health.start_survey()
         elif _matches(t, "назад"):
             _nav = Nav.ROOT
             notify.send_viber_keyboard("Выбери раздел:", kb.root_keyboard())
         else:
             print(f"[DISPATCH] REMINDER неизвестная кнопка: '{t}'")
             notify.send_viber_keyboard("🏥 Привычки и распорядок дня:", kb.reminder_keyboard())
-
-
-def _goto(state: str) -> None:
-    global _nav
-    _nav = state

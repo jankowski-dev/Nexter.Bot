@@ -89,25 +89,49 @@ def get_habits_stats() -> dict:
     return result
 
 
-def update_all_counters(updates: dict, stats: dict) -> None:
+def increment_all_habit_counters() -> None:
+    """Каждый день в 22:00 увеличивает счётчик всех привычек на 1."""
+    database_id = _config.get("notion", {}).get("habits_db_id", "")
     counter_field = _config.get("habits_fields", {}).get("counter", "Счетчик")
+    habits_list = _config.get("habits", [])
+    name_field = _config.get("habits_fields", {}).get("name", "Название")
+
+    if not database_id or not habits_list:
+        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ habits не настроены.")
+        return
+
+    url = f"https://api.notion.com/v1/databases/{database_id}/query"
     headers = _notion_headers()
 
-    for name, relapsed in updates.items():
-        info = stats.get(name)
-        if not info:
+    try:
+        response = requests.post(url, headers=headers, json={"page_size": 100}, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+    except Exception:
+        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса привычек.")
+        return
+
+    updated = 0
+    for page in data.get("results", []):
+        props = page.get("properties", {})
+        title = _get_title(props, name_field)
+        if title.lower() not in [h.lower() for h in habits_list]:
             continue
-        new_counter = 0 if relapsed else info["counter"] + 1
+        current = _get_number(props, counter_field)
+        new_counter = int(current) + 1
         try:
             resp = requests.patch(
-                f"https://api.notion.com/v1/pages/{info['page_id']}",
+                f"https://api.notion.com/v1/pages/{page['id']}",
                 headers=headers,
                 json={"properties": {counter_field: {"number": new_counter}}},
                 timeout=15,
             )
             resp.raise_for_status()
+            updated += 1
         except Exception:
-            print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка обновления счётчика для {name}.")
+            print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка +1 для {title}.")
+
+    print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ✅ +1 к {updated} привычкам.")
 
 
 def get_schedule() -> list[dict]:

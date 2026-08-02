@@ -11,7 +11,7 @@ import notify
 import notion_reader
 import signal_tracker
 import keyboards as kb
-from dispatcher import handle_conversation_started, handle_message, set_nav, Nav
+from dispatcher import handle_conversation_started, handle_message
 
 app = Flask(__name__)
 

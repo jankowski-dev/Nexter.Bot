@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import notify
 import keyboards as kb
-from health_notion import get_schedule
+from health_notion import get_schedule, increment_all_habit_counters
 
 local_now = datetime.now()
 utc_now = datetime.utcnow()
@@ -22,6 +22,12 @@ print(f"[SCHED] Часовой пояс: UTC{_tz_offset:+d}")
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
     notify.send_viber_keyboard(name, kb.root_keyboard())
+
+
+def _daily_habit_increment() -> None:
+    """Каждый день в 22:00 +1 ко всем привычкам."""
+    print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 📊 +1 к привычкам...")
+    increment_all_habit_counters()
 
 
 def _refresh_schedule() -> None:
@@ -73,6 +79,19 @@ def start_scheduler() -> None:
         coalesce=True,
     )
     print(f"[SCHED] Обновление расписания: раз в час.")
+
+    scheduler.add_job(
+        _daily_habit_increment,
+        "cron",
+        hour=22,
+        minute=0,
+        id="daily_habit_increment",
+        replace_existing=True,
+        misfire_grace_time=600,
+        coalesce=True,
+        max_instances=1,
+    )
+    print(f"[SCHED] +1 к привычкам: каждый день в 22:00.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")

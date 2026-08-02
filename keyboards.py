@@ -58,7 +58,7 @@ def reminder_keyboard():
         "Type": "keyboard",
         "DefaultHeight": False,
         "ButtonsGroupColumns": 6,
-        "ButtonsGroupRows": 2,
+        "ButtonsGroupRows": 1,
         "Buttons": [
             {
                 "Columns": 3, "Rows": 1,
@@ -68,35 +68,8 @@ def reminder_keyboard():
             },
             {
                 "Columns": 3, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Внести данные",
-                "Text": "📝 Внести данные", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 6, "Rows": 1,
                 "ActionType": "reply", "ActionBody": "Назад",
                 "Text": "← Назад", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-        ],
-    }
-
-
-def survey_keyboard():
-    return {
-        "Type": "keyboard",
-        "DefaultHeight": False,
-        "Buttons": [
-            {
-                "Columns": 3, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Да",
-                "Text": "✅ Да", "TextSize": "regular",
-                "BgColor": "#F6F6F6", "TextHAlign": "center",
-            },
-            {
-                "Columns": 3, "Rows": 1,
-                "ActionType": "reply", "ActionBody": "Нет",
-                "Text": "❌ Нет", "TextSize": "regular",
                 "BgColor": "#F6F6F6", "TextHAlign": "center",
             },
         ],
