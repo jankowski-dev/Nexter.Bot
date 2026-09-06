@@ -1,13 +1,11 @@
 """
 health_notion.py — Notion API для привычек и распорядка дня.
-Конфигурация из health_config.yaml, API-ключ из VIBER_TOKEN окружения.
+Конфигурация из health_config.yaml, API-ключ из NOTION_API_KEY/NOTION_TOKEN.
 """
 
 import os
-import yaml
 import requests
 from datetime import datetime
-from typing import Optional
 
 NOTION_API_VERSION = "2022-06-28"
 
@@ -15,6 +13,7 @@ _config: dict = {}
 
 
 def load_config(path: str = "health_config.yaml") -> dict:
+    import yaml
     global _config
     base = os.path.dirname(os.path.abspath(__file__))
     full_path = os.path.join(base, path)
@@ -37,13 +36,6 @@ def _get_title(props: dict, field_name: str) -> str:
     return title_arr[0]["plain_text"] if title_arr else ""
 
 
-def _get_formula_value(props: dict, field_name: str):
-    formula = props.get(field_name, {}).get("formula", {})
-    if not formula:
-        return ""
-    return formula.get("number", formula.get("string", ""))
-
-
 def _get_number(props: dict, field_name: str) -> float:
     return props.get(field_name, {}).get("number", 0) or 0
 
@@ -51,42 +43,6 @@ def _get_number(props: dict, field_name: str) -> float:
 def _get_rich_text(props: dict, field_name: str) -> str:
     rt_arr = props.get(field_name, {}).get("rich_text", [])
     return rt_arr[0]["plain_text"] if rt_arr else ""
-
-
-def get_habits_stats() -> dict:
-    database_id = _config.get("notion", {}).get("habits_db_id", "")
-    fields_cfg = _config.get("habits_fields", {})
-    name_field = fields_cfg.get("name", "Название")
-    days_field = fields_cfg.get("days_without", "Дней без")
-    counter_field = fields_cfg.get("counter", "Счетчик")
-    habits_list = _config.get("habits", [])
-
-    if not database_id:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ habits_db_id не задан.")
-        return {}
-
-    url = f"https://api.notion.com/v1/databases/{database_id}/query"
-    headers = _notion_headers()
-
-    try:
-        response = requests.post(url, headers=headers, json={"page_size": 100}, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-    except Exception:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса привычек.")
-        return {}
-
-    result = {}
-    for page in data.get("results", []):
-        props = page.get("properties", {})
-        title = _get_title(props, name_field)
-        if title.lower() in [h.lower() for h in habits_list]:
-            result[title] = {
-                "days_without": _get_formula_value(props, days_field),
-                "counter": _get_number(props, counter_field),
-                "page_id": page["id"],
-            }
-    return result
 
 
 def increment_all_habit_counters() -> None:
@@ -151,7 +107,6 @@ def get_schedule() -> list[dict]:
     payload: dict = {"page_size": 100}
 
     try:
-        # Первый запрос без фильтра — чтобы узнать имена полей
         response = requests.post(url, headers=headers, json=payload, timeout=15)
         response.raise_for_status()
         data = response.json()
@@ -172,7 +127,6 @@ def get_schedule() -> list[dict]:
             if ("дата" in pname.lower() or "date" in pname.lower()) and ptype == "date":
                 date_field = pname
 
-    # Если нашли поле даты, фильтруем по сегодня
     if date_field:
         payload["filter"] = {
             "property": date_field,

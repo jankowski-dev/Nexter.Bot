@@ -8,9 +8,6 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 
 import notify
-import notion_reader
-import signal_tracker
-import keyboards as kb
 from dispatcher import handle_conversation_started, handle_message
 
 app = Flask(__name__)
@@ -28,7 +25,7 @@ def _verify_signature(signature: str, body: str) -> bool:
 def index():
     return jsonify({
         "status": "running",
-        "service": "Nexter.Health — Crypto + Habits Tracker",
+        "service": "Nexter.Bot — Habits & Schedule Tracker",
         "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
     })
 
@@ -71,7 +68,7 @@ def webhook():
                             handle_message(text)
                         except Exception as e:
                             print(f"[WEBHOOK] Ошибка в handle_message: {e}")
-                            notify.send_viber_keyboard("⚠️ Ошибка. Попробуй ещё раз.", kb.root_keyboard())
+                            notify.send_viber_message("⚠️ Ошибка. Попробуй ещё раз.")
 
                 elif event_type == "conversation_started":
                     print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} Разговор начат.")
@@ -85,10 +82,6 @@ def webhook():
 
         except Exception as e:
             print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка: {e}")
-            try:
-                notify.send_viber_keyboard("⚠️ Сбой. Попробуй ещё раз.", kb.root_keyboard())
-            except Exception:
-                pass
 
         return jsonify({"status": 0})
 
@@ -98,34 +91,6 @@ def _check_test_secret() -> bool:
         return True
     secret = request.args.get("secret", "")
     return secret == TEST_SECRET
-
-
-@app.route("/test/check", methods=["GET"])
-def test_check():
-    if not _check_test_secret():
-        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
-
-    deals = notion_reader.read_deals()
-    signal_tracker.last_deals = deals
-
-    return jsonify({
-        "status": "ok",
-        "deals_count": len(deals),
-        "deals": deals,
-        "report": signal_tracker.get_unified_report(deals),
-    })
-
-
-@app.route("/test/reset", methods=["GET"])
-def test_reset():
-    if not _check_test_secret():
-        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
-
-    signal_tracker.reset_all_states()
-    return jsonify({
-        "status": "ok",
-        "message": "Все состояния трекера сброшены.",
-    })
 
 
 @app.route("/test/habits", methods=["GET"])

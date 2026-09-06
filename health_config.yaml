@@ -4,7 +4,6 @@ notion:
 
 habits_fields:
   name: "Название"
-  days_without: "Эффективность [F]"
   counter: "Срок [P]"
 
 schedule_fields:

@@ -1,13 +1,12 @@
 """
-scheduler.py — APScheduler: напоминания распорядка.
-Расписание обновляется из Notion каждые 10 минут.
+scheduler.py — APScheduler: напоминания распорядка и автоинкремент привычек.
+Расписание обновляется из Notion каждые 60 минут.
 """
 
 from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import notify
-import keyboards as kb
 from health_notion import get_schedule, increment_all_habit_counters
 
 local_now = datetime.now()
@@ -21,7 +20,7 @@ print(f"[SCHED] Часовой пояс: UTC{_tz_offset:+d}")
 
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
-    notify.send_viber_keyboard(name, kb.root_keyboard())
+    notify.send_viber_message(name)
 
 
 def _daily_habit_increment() -> None:
@@ -41,7 +40,6 @@ def _refresh_schedule() -> None:
         print(f"[SCHED] {now.strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
         return
 
-    # Собираем ID активных задач
     active_ids = set()
     for item in items:
         try:
@@ -63,7 +61,6 @@ def _refresh_schedule() -> None:
         )
         print(f"[SCHED] {item['time']} — {item['name']}")
 
-    # Удаляем джобы, которых больше нет в задачах
     for job in scheduler.get_jobs():
         if job.id.startswith("reminder_") and job.id not in active_ids:
             job.remove()
