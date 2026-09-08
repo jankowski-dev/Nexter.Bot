@@ -13,7 +13,7 @@ NOTION_API_VERSION = "2022-06-28"
 
 _notified_ids: set[str] = set()
 
-POLL_INTERVAL_MINUTES = 3
+POLL_INTERVAL_MINUTES = 1
 
 
 def _notion_headers() -> dict:
