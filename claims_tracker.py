@@ -210,15 +210,13 @@ def check_new_claims() -> None:
 
         props = page.get("properties", {})
 
-        files_raw = props.get("Файлы", {})
-        print(f"[CLAIMS] DEBUG Файлы type={files_raw.get('type')} keys={list(files_raw.keys())}")
-
         message = _format_message(props)
         notify.send_viber_message(message)
 
         file_urls = _get_files(props, "Файлы")
         for file_url in file_urls:
-            notify.send_viber_image(file_url)
+            compressed_url = notify.compress_image(file_url)
+            notify.send_viber_image(compressed_url)
 
         print(f"[CLAIMS] {datetime.now().strftime('%H:%M:%S')} ✅ Уведомление: {_get_title(props, 'Имя') or page_id[:8]} (+{len(file_urls)} файлов)")
 

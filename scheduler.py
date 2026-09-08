@@ -93,6 +93,16 @@ def start_scheduler() -> None:
     )
     print(f"[SCHED] +1 к привычкам: каждый день в 22:00.")
 
+    scheduler.add_job(
+        notify.cleanup_compressed_cache,
+        "interval",
+        minutes=60,
+        id="cleanup_compressed",
+        max_instances=1,
+        coalesce=True,
+    )
+    print(f"[SCHED] Очистка кэша сжатых картинок: раз в час.")
+
     if os.environ.get("CLAIMS_DB_ID"):
         scheduler.add_job(
             claims_tracker.check_new_claims,

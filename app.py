@@ -5,7 +5,7 @@ app.py — Flask-приложение: вебхук Viber, health-check, тес�
 import os
 from datetime import datetime
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 import notify
 from dispatcher import handle_conversation_started, handle_message
@@ -34,6 +34,13 @@ def index():
 def ping():
     print(f"[APP] {datetime.now().strftime('%H:%M:%S')} GET /ping")
     return "pong", 200
+
+
+@app.route("/compressed/<filename>", methods=["GET"])
+def serve_compressed(filename):
+    if not os.path.isfile(os.path.join(notify.COMPRESS_DIR, filename)):
+        return "Not found", 404
+    return send_from_directory(notify.COMPRESS_DIR, filename, mimetype="image/jpeg")
 
 
 @app.route("/webhook", methods=["GET", "POST", "HEAD"])

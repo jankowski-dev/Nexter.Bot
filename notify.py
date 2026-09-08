@@ -4,8 +4,10 @@ notify.py — Отправка уведомлений в Viber через фон
 Фоновый поток разбирает очередь и шлёт сообщения в Viber API.
 """
 
+import io
 import os
 import time
+import uuid
 import queue
 import threading
 import requests
@@ -14,6 +16,11 @@ from datetime import datetime
 _send_queue: queue.Queue = queue.Queue(maxsize=256)
 _worker_started = False
 _worker_lock = threading.Lock()
+
+COMPRESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_compressed_cache")
+MAX_IMAGE_BYTES = 2 * 1024 * 1024
+MAX_DIMENSION = 1920
+JPEG_QUALITY = 80
 
 
 def _start_worker() -> None:
@@ -73,6 +80,81 @@ def send_viber_image(image_url: str, text: str = "", max_retries: int = 2, retry
         print(f"[NOTIFY] {datetime.now().strftime('%H:%M:%S')} ❌ Очередь переполнена, картинка отброшена.")
         return False
     return True
+
+
+def _get_public_base() -> str:
+    webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+    if webhook_url:
+        return webhook_url.rsplit("/webhook", 1)[0]
+    return ""
+
+
+def compress_image(image_url: str) -> str:
+    """Скачивает картинку, сжимает до 2MB если нужно, возвращает URL."""
+    try:
+        from PIL import Image
+    except ImportError:
+        print(f"[NOTIFY] Pillow не установлен — отправляю оригинал.")
+        return image_url
+
+    try:
+        resp = requests.get(image_url, timeout=30)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"[NOTIFY] ❌ Ошибка скачивания: {e}")
+        return image_url
+
+    original_size = len(resp.content)
+    if original_size <= MAX_IMAGE_BYTES:
+        print(f"[NOTIFY] Картинка {original_size // 1024}KB — OK")
+        return image_url
+
+    try:
+        img = Image.open(io.BytesIO(resp.content))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        w, h = img.size
+        if max(w, h) > MAX_DIMENSION:
+            ratio = MAX_DIMENSION / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+        compressed = buf.getvalue()
+        compressed_size = len(compressed)
+
+        print(f"[NOTIFY] Сжатие: {original_size // 1024}KB → {compressed_size // 1024}KB ({img.size[0]}x{img.size[1]})")
+
+        os.makedirs(COMPRESS_DIR, exist_ok=True)
+        filename = f"{uuid.uuid4().hex}.jpg"
+        filepath = os.path.join(COMPRESS_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(compressed)
+
+        base = _get_public_base()
+        if not base:
+            print(f"[NOTIFY] ⚠️ WEBHOOK_URL не задан — сжатая картинка недоступна.")
+            return image_url
+
+        file_url = f"{base}/compressed/{filename}"
+        print(f"[NOTIFY] Сжатая картинка: {file_url}")
+        return file_url
+
+    except Exception as e:
+        print(f"[NOTIFY] ❌ Ошибка сжатия: {e}")
+        return image_url
+
+
+def cleanup_compressed_cache() -> None:
+    """Удаляет файлы старше 1 часа."""
+    if not os.path.isdir(COMPRESS_DIR):
+        return
+    now = time.time()
+    for f in os.listdir(COMPRESS_DIR):
+        fp = os.path.join(COMPRESS_DIR, f)
+        if os.path.isfile(fp) and now - os.path.getmtime(fp) > 3600:
+            os.remove(fp)
 
 
 def _get_credentials() -> tuple[str | None, str | None]:
