@@ -4,6 +4,7 @@ claims_tracker.py — Мониторинг новых заявок в Notion.
 """
 
 import os
+import json
 import requests
 from datetime import datetime
 
@@ -11,9 +12,32 @@ import notify
 
 NOTION_API_VERSION = "2022-06-28"
 
+_STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_notified_ids.json")
 _notified_ids: set[str] = set()
 
 POLL_INTERVAL_MINUTES = 10
+
+
+def _load_state() -> None:
+    global _notified_ids
+    if os.path.isfile(_STATE_FILE):
+        try:
+            with open(_STATE_FILE, "r", encoding="utf-8") as f:
+                _notified_ids = set(json.load(f))
+            print(f"[CLAIMS] Загружено {len(_notified_ids)} ID из кэша.")
+        except Exception:
+            _notified_ids = set()
+
+
+def _save_state() -> None:
+    try:
+        with open(_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(list(_notified_ids), f)
+    except Exception as e:
+        print(f"[CLAIMS] ❌ Ошибка сохранения состояния: {e}")
+
+
+_load_state()
 
 
 def _notion_headers() -> dict:
@@ -206,6 +230,7 @@ def check_new_claims() -> None:
             continue
 
         _notified_ids.add(page_id)
+        _save_state()
         new_count += 1
 
         props = page.get("properties", {})
