@@ -65,20 +65,54 @@ def _get_date(props: dict, field: str) -> str:
 def _get_files(props: dict, field: str) -> list[str]:
     """Извлекает URL файлов из свойства type=file."""
     files_prop = props.get(field, {})
-    if files_prop.get("type") != "file":
-        return []
-    files_arr = files_prop.get("files", [])
+    prop_type = files_prop.get("type", "")
+
     urls = []
-    for f in files_arr:
-        if f.get("type") == "file":
-            url = f.get("file", {}).get("url", "")
+
+    if prop_type == "files":
+        for f in files_prop.get("files", []):
+            url = ""
+            if f.get("type") == "file":
+                url = f.get("file", {}).get("url", "")
+            elif f.get("type") == "external":
+                url = f.get("external", {}).get("url", "")
             if url:
                 urls.append(url)
-        elif f.get("type") == "external":
-            url = f.get("external", {}).get("url", "")
-            if url:
-                urls.append(url)
+
+    elif prop_type == "array":
+        for item in files_prop.get("array", []):
+            if item.get("type") == "file":
+                url = item.get("file", {}).get("url", "")
+                if url:
+                    urls.append(url)
+
+    elif prop_type in ("files",) and not files_prop.get("files"):
+        pass
+
+    else:
+        raw = files_prop.get(prop_type, files_prop)
+        if isinstance(raw, list):
+            for item in raw:
+                if isinstance(item, str) and item.startswith("file://"):
+                    decoded = _decode_file_url(item)
+                    if decoded:
+                        urls.append(decoded)
+                elif isinstance(item, str) and item.startswith("http"):
+                    urls.append(item)
+
     return urls
+
+
+def _decode_file_url(file_url: str) -> str:
+    """Декодирует file:// URL с закодированным JSON внутри."""
+    import urllib.parse
+    try:
+        encoded = file_url[len("file://"):]
+        decoded = urllib.parse.unquote(encoded)
+        data = __import__("json").loads(decoded)
+        return data.get("source", "")
+    except Exception:
+        return ""
 
 
 def _format_message(props: dict) -> str:
@@ -175,6 +209,10 @@ def check_new_claims() -> None:
         new_count += 1
 
         props = page.get("properties", {})
+
+        files_raw = props.get("Файлы", {})
+        print(f"[CLAIMS] DEBUG Файлы type={files_raw.get('type')} keys={list(files_raw.keys())}")
+
         message = _format_message(props)
         notify.send_viber_message(message)
 
