@@ -136,6 +136,10 @@ def check_new_claims() -> None:
         )
         response.raise_for_status()
         data = response.json()
+    except requests.exceptions.HTTPError as e:
+        body = response.text[:300] if response is not None else ""
+        print(f"[CLAIMS] {datetime.now().strftime('%H:%M:%S')} ❌ HTTP {response.status_code}: {body}")
+        return
     except Exception as e:
         print(f"[CLAIMS] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса: {e}")
         return
