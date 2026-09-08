@@ -25,7 +25,7 @@ def _verify_signature(signature: str, body: str) -> bool:
 def index():
     return jsonify({
         "status": "running",
-        "service": "Nexter.Bot — Habits & Schedule Tracker",
+        "service": "Nexter.Bot — Habits, Schedule & Claims Tracker",
         "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
     })
 
@@ -188,3 +188,14 @@ def test_schedule():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route("/test/claims", methods=["GET"])
+def test_claims():
+    if not _check_test_secret():
+        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
+
+    import claims_tracker
+    claims_tracker.reset_state()
+    claims_tracker.check_new_claims()
+    return jsonify({"status": "ok", "message": "Проверка заявок выполнена."})

@@ -6,8 +6,10 @@ scheduler.py — APScheduler: напоминания распорядка и а�
 from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
+import os
 import notify
 from health_notion import get_schedule, increment_all_habit_counters
+import claims_tracker
 
 local_now = datetime.now()
 utc_now = datetime.utcnow()
@@ -90,6 +92,19 @@ def start_scheduler() -> None:
         max_instances=1,
     )
     print(f"[SCHED] +1 к привычкам: каждый день в 22:00.")
+
+    if os.environ.get("CLAIMS_DB_ID"):
+        scheduler.add_job(
+            claims_tracker.check_new_claims,
+            "interval",
+            minutes=claims_tracker.POLL_INTERVAL_MINUTES,
+            id="check_claims",
+            max_instances=1,
+            coalesce=True,
+        )
+        print(f"[SCHED] Мониторинг заявок: каждые {claims_tracker.POLL_INTERVAL_MINUTES} мин.")
+    else:
+        print(f"[SCHED] ⚠️ CLAIMS_DB_ID не задан — мониторинг заявок отключён.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")

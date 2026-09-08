@@ -44,6 +44,11 @@ if __name__ == "__main__":
 
     start_scheduler()
 
+    if os.environ.get("CLAIMS_DB_ID"):
+        print(f"[STARTUP] ✅ Мониторинг заявок включён (CLAIMS_DB_ID задан).")
+    else:
+        print(f"[STARTUP] ⚠️ CLAIMS_DB_ID не задан — мониторинг заявок отключён.")
+
     webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
     viber_token = os.environ.get("VIBER_TOKEN", "").strip()
     print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")
