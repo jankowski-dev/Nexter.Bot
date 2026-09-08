@@ -62,6 +62,25 @@ def _get_date(props: dict, field: str) -> str:
         return start
 
 
+def _get_files(props: dict, field: str) -> list[str]:
+    """Извлекает URL файлов из свойства type=file."""
+    files_prop = props.get(field, {})
+    if files_prop.get("type") != "file":
+        return []
+    files_arr = files_prop.get("files", [])
+    urls = []
+    for f in files_arr:
+        if f.get("type") == "file":
+            url = f.get("file", {}).get("url", "")
+            if url:
+                urls.append(url)
+        elif f.get("type") == "external":
+            url = f.get("external", {}).get("url", "")
+            if url:
+                urls.append(url)
+    return urls
+
+
 def _format_message(props: dict) -> str:
     name = _get_title(props, "Имя") or "без имени"
     phone = _get_phone(props, "Телефон")
@@ -158,7 +177,12 @@ def check_new_claims() -> None:
         props = page.get("properties", {})
         message = _format_message(props)
         notify.send_viber_message(message)
-        print(f"[CLAIMS] {datetime.now().strftime('%H:%M:%S')} ✅ Уведомление: {_get_title(props, 'Имя') or page_id[:8]}")
+
+        file_urls = _get_files(props, "Файлы")
+        for file_url in file_urls:
+            notify.send_viber_image(file_url)
+
+        print(f"[CLAIMS] {datetime.now().strftime('%H:%M:%S')} ✅ Уведомление: {_get_title(props, 'Имя') or page_id[:8]} (+{len(file_urls)} файлов)")
 
     if new_count == 0 and results:
         pass

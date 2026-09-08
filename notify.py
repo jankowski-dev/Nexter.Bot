@@ -62,6 +62,19 @@ def send_viber_keyboard(text: str, keyboard: dict = None, max_retries: int = 2, 
     return True
 
 
+def send_viber_image(image_url: str, text: str = "", max_retries: int = 2, retry_delay: int = 1) -> bool:
+    _start_worker()
+    payload = {"receiver": None, "type": "picture", "media": image_url}
+    if text:
+        payload["text"] = text
+    try:
+        _send_queue.put_nowait((payload, max_retries, retry_delay))
+    except queue.Full:
+        print(f"[NOTIFY] {datetime.now().strftime('%H:%M:%S')} ❌ Очередь переполнена, картинка отброшена.")
+        return False
+    return True
+
+
 def _get_credentials() -> tuple[str | None, str | None]:
     return os.environ.get("VIBER_TOKEN"), os.environ.get("VIBER_USER_ID")
 
