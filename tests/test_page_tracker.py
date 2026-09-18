@@ -203,6 +203,37 @@ def test_poll_send_failure_then_success_retries():
         _restore(originals)
 
 
+def test_num_to_str_normalizes_integral_float():
+    assert page_tracker._num_to_str(123.0) == "123"
+    assert page_tracker._num_to_str(1.5) == "1.5"
+    assert page_tracker._num_to_str(7) == "7"
+
+
+def test_save_state_cleans_tmp_on_failure():
+    import tempfile
+    import shutil
+
+    original_file = page_tracker._STATE_FILE
+    original_dump = page_tracker.json.dump
+    tmp_dir = tempfile.mkdtemp()
+    state_file = os.path.join(tmp_dir, "_notified_ids.json")
+    page_tracker._STATE_FILE = state_file
+
+    def boom(*a, **k):
+        raise ValueError("boom")
+
+    page_tracker.json.dump = boom
+    try:
+        page_tracker._state.clear()
+        page_tracker._state["claims"] = {"p1"}
+        page_tracker._save_state()
+        assert not os.path.isfile(state_file + ".tmp")
+    finally:
+        page_tracker.json.dump = original_dump
+        page_tracker._STATE_FILE = original_file
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 if __name__ == "__main__":
     os.environ.setdefault("NOTION_API_KEY", "test")
     for name, fn in sorted(globals().items()):
