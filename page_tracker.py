@@ -6,6 +6,7 @@ page_tracker.py — Универсальный мониторинг новых �
 
 import os
 import json
+import threading
 import requests
 from datetime import datetime
 
@@ -15,6 +16,7 @@ NOTION_API_VERSION = "2022-06-28"
 
 _STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_notified_ids.json")
 _state: dict[str, set[str]] = {}
+_state_lock = threading.Lock()
 
 
 def _load_state() -> None:
@@ -39,8 +41,10 @@ def _load_state() -> None:
 
 def _save_state() -> None:
     try:
-        with open(_STATE_FILE, "w", encoding="utf-8") as f:
+        tmp_path = _STATE_FILE + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump({k: list(v) for k, v in _state.items()}, f)
+        os.replace(tmp_path, _STATE_FILE)
     except Exception as e:
         print(f"[TRACKER] ❌ Ошибка сохранения состояния: {e}")
 
@@ -65,10 +69,10 @@ def _extract_id(props: dict, field: str) -> str:
 
     if ptype == "number":
         val = prop.get("number")
-        return str(int(val)) if val is not None else ""
+        return str(val) if val is not None else ""
     if ptype in ("rich_text", "title"):
         arr = prop.get(ptype, [])
-        return arr[0]["plain_text"] if arr else ""
+        return arr[0].get("plain_text", "") if arr else ""
     if ptype == "unique_id":
         uid = prop.get("unique_id") or {}
         number = uid.get("number")
@@ -82,8 +86,6 @@ def _extract_id(props: dict, field: str) -> str:
         val = formula.get(ftype)
         if val is None:
             return ""
-        if ftype == "number":
-            return str(int(val))
         return str(val)
     if ptype == "select":
         sel = prop.get("select")
@@ -138,30 +140,35 @@ def poll_new_pages(
         print(f"[{log_tag}] {now} ❌ Ошибка запроса: {e}")
         return
 
-    if state_key not in _state:
-        known = set()
+    with _state_lock:
+        if state_key not in _state:
+            known = set()
+            for page in pages:
+                page_id = page.get("id", "")
+                if page_id:
+                    known.add(page_id)
+            _state[state_key] = known
+            _save_state()
+            print(f"[{log_tag}] {now} 🌱 Первый запуск: прогрето {len(known)} ID без отправки.")
+            return
+
+        known = _state[state_key]
+        new_count = 0
         for page in pages:
             page_id = page.get("id", "")
-            if page_id:
-                known.add(page_id)
-        _state[state_key] = known
-        _save_state()
-        print(f"[{log_tag}] {now} 🌱 Первый запуск: прогрето {len(known)} ID без отправки.")
-        return
+            if not page_id or page_id in known:
+                continue
+            props = page.get("properties", {})
+            id_value = _extract_id(props, id_field) or page_id[:8]
+            if not notify.send_viber_message(f"{label} {id_value}"):
+                print(f"[{log_tag}] {now} ❌ Не отправлено: {label} {id_value}")
+                continue
+            known.add(page_id)
+            new_count += 1
+            print(f"[{log_tag}] {now} ✅ Уведомление: {label} {id_value}")
 
-    known = _state[state_key]
-    new_count = 0
-    for page in pages:
-        page_id = page.get("id", "")
-        if not page_id or page_id in known:
-            continue
-        known.add(page_id)
-        _save_state()
-        new_count += 1
-        props = page.get("properties", {})
-        id_value = _extract_id(props, id_field) or page_id[:8]
-        notify.send_viber_message(f"{label} {id_value}")
-        print(f"[{log_tag}] {now} ✅ Уведомление: {label} {id_value}")
+        if new_count:
+            _save_state()
 
     if new_count:
         print(f"[{log_tag}] {now} ✅ Новых: {new_count}")
@@ -171,5 +178,6 @@ def poll_new_pages(
 
 def reset_state(state_key: str) -> None:
     """Сбрасывает набор уведомлённых для трекера (для тестов)."""
-    _state[state_key] = set()
-    _save_state()
+    with _state_lock:
+        _state[state_key] = set()
+        _save_state()

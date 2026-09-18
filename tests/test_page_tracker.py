@@ -93,6 +93,11 @@ def _page(pid, id_value):
     return {"id": pid, "properties": {"ID": {"type": "number", "number": id_value}}}
 
 
+def _fake_send(sent, text):
+    sent.append(text)
+    return True
+
+
 def _patch(sent, pages):
     original_post = page_tracker.requests.post
     original_send = page_tracker.notify.send_viber_message
@@ -100,7 +105,7 @@ def _patch(sent, pages):
     page_tracker.requests.post = lambda *a, **k: _FakeResponse(
         {"results": pages, "has_more": False}
     )
-    page_tracker.notify.send_viber_message = lambda text: sent.append(text)
+    page_tracker.notify.send_viber_message = lambda text: _fake_send(sent, text)
     page_tracker._save_state = lambda: None
     return original_post, original_send, original_save
 
@@ -155,6 +160,22 @@ def test_poll_reset_state_sends_all():
             "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
         )
         assert sent == ["Получена новая заявка 1"]
+    finally:
+        _restore(originals)
+
+
+def test_poll_send_failure_not_marked():
+    os.environ["NOTION_API_KEY"] = "test"
+    sent = []
+    originals = _patch(sent, [_page("p1", 1)])
+    try:
+        page_tracker._state.clear()
+        page_tracker._state["claims"] = set()
+        page_tracker.notify.send_viber_message = lambda text: False
+        page_tracker.poll_new_pages(
+            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
+        )
+        assert page_tracker._state["claims"] == set()
     finally:
         _restore(originals)
 
