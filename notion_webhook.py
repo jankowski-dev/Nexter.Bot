@@ -16,14 +16,14 @@ from logutil import ts
 _TRACKERS = {
     "claims": {
         "env": "CLAIMS_DB_ID",
-        "label": "Получена новая заявка",
+        "label": "Получена заявка",
         "log_tag": "CLAIMS",
         "status_field": "Статус",
         "status_value": "Новая",
     },
     "reviews": {
         "env": "REVIEWS_DB_ID",
-        "label": "Получен новый отзыв",
+        "label": "Получен отзыв",
         "log_tag": "REVIEWS",
         "status_field": "",
         "status_value": "",

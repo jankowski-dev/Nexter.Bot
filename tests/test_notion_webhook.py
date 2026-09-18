@@ -33,7 +33,7 @@ def test_tracker_for_parent():
     os.environ["REVIEWS_DB_ID"] = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     key, cfg = notion_webhook._tracker_for_parent("365c8f4b499480c0a2dad34b5817f704")
     assert key == "claims"
-    assert cfg["label"] == "Получена новая заявка"
+    assert cfg["label"] == "Получена заявка"
     key2, _ = notion_webhook._tracker_for_parent("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     assert key2 == "reviews"
     key3, _ = notion_webhook._tracker_for_parent("11111111-2222-3333-4444-555555555555")
@@ -85,7 +85,7 @@ def test_handle_event_notifies_new_review():
     originals = _patch(sent, marked, page)
     try:
         assert notion_webhook.handle_event(_payload("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")) is True
-        assert sent == ["[42] Получен новый отзыв"]
+        assert sent == ["[42] Получен отзыв"]
         assert marked == [("reviews", "page1")]
     finally:
         _restore(originals)
@@ -134,7 +134,7 @@ def test_handle_event_notifies_new_claim():
     originals = _patch(sent, marked, page)
     try:
         assert notion_webhook.handle_event(_payload("365c8f4b499480c0a2dad34b5817f704")) is True
-        assert sent == ["[5] Получена новая заявка"]
+        assert sent == ["[5] Получена заявка"]
         assert marked == [("claims", "page1")]
     finally:
         _restore(originals)
