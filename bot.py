@@ -49,6 +49,11 @@ if __name__ == "__main__":
     else:
         print(f"[STARTUP] ⚠️ CLAIMS_DB_ID не задан — мониторинг заявок отключён.")
 
+    if os.environ.get("REVIEWS_DB_ID"):
+        print(f"[STARTUP] ✅ Мониторинг отзывов включён (REVIEWS_DB_ID задан).")
+    else:
+        print(f"[STARTUP] ⚠️ REVIEWS_DB_ID не задан — мониторинг отзывов отключён.")
+
     webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
     viber_token = os.environ.get("VIBER_TOKEN", "").strip()
     print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")

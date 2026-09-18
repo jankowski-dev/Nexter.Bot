@@ -206,3 +206,14 @@ def test_claims():
     claims_tracker.reset_state()
     claims_tracker.check_new_claims()
     return jsonify({"status": "ok", "message": "Проверка заявок выполнена."})
+
+
+@app.route("/test/reviews", methods=["GET"])
+def test_reviews():
+    if not _check_test_secret():
+        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
+
+    import reviews_tracker
+    reviews_tracker.reset_state()
+    reviews_tracker.check_new_reviews()
+    return jsonify({"status": "ok", "message": "Проверка отзывов выполнена."})

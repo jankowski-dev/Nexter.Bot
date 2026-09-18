@@ -10,6 +10,7 @@ import os
 import notify
 from health_notion import get_schedule, increment_all_habit_counters
 import claims_tracker
+import reviews_tracker
 
 local_now = datetime.now()
 utc_now = datetime.utcnow()
@@ -29,7 +30,6 @@ def _daily_habit_increment() -> None:
     """Каждый день в 22:00 +1 ко всем привычкам."""
     print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 📊 +1 к привычкам...")
     increment_all_habit_counters()
-    notify.send_viber_message("📊 Данные по привычкам за сегодня обновлены.")
 
 
 def _refresh_schedule() -> None:
@@ -115,6 +115,19 @@ def start_scheduler() -> None:
         print(f"[SCHED] Мониторинг заявок: каждые {claims_tracker.POLL_INTERVAL_MINUTES} мин.")
     else:
         print(f"[SCHED] ⚠️ CLAIMS_DB_ID не задан — мониторинг заявок отключён.")
+
+    if os.environ.get("REVIEWS_DB_ID"):
+        scheduler.add_job(
+            reviews_tracker.check_new_reviews,
+            "interval",
+            minutes=reviews_tracker.POLL_INTERVAL_MINUTES,
+            id="check_reviews",
+            max_instances=1,
+            coalesce=True,
+        )
+        print(f"[SCHED] Мониторинг отзывов: каждые {reviews_tracker.POLL_INTERVAL_MINUTES} мин.")
+    else:
+        print(f"[SCHED] ⚠️ REVIEWS_DB_ID не задан — мониторинг отзывов отключён.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")
