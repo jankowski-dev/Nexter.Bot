@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import notify
 from health_notion import get_schedule, increment_all_habit_counters
+from logutil import ts
 
 local_now = datetime.now()
 utc_now = datetime.utcnow()
@@ -19,24 +20,23 @@ print(f"[SCHED] Часовой пояс: UTC{_tz_offset:+d}")
 
 
 def _send_reminder(name: str) -> None:
-    print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 🔔 {name}")
+    print(f"[SCHED] {ts()} 🔔 {name}")
     notify.send_viber_message(name)
 
 
 def _daily_habit_increment() -> None:
     """Каждый день в 22:00 +1 ко всем привычкам."""
-    print(f"[SCHED] {datetime.now().strftime('%H:%M:%S')} 📊 +1 к привычкам...")
+    print(f"[SCHED] {ts()} 📊 +1 к привычкам...")
     increment_all_habit_counters()
 
 
 def _refresh_schedule() -> None:
     """Перечитывает расписание из Notion и обновляет cron-задачи."""
-    now = datetime.now()
-    print(f"[SCHED] {now.strftime('%H:%M:%S')} — обновление расписания...")
+    print(f"[SCHED] {ts()} — обновление расписания...")
     try:
         items = get_schedule()
     except Exception:
-        print(f"[SCHED] {now.strftime('%H:%M:%S')} ⚠️ Ошибка загрузки расписания.")
+        print(f"[SCHED] {ts()} ⚠️ Ошибка загрузки расписания.")
         return
 
     active_ids = set()
@@ -89,16 +89,6 @@ def start_scheduler() -> None:
         max_instances=1,
     )
     print(f"[SCHED] +1 к привычкам: каждый день в 22:00.")
-
-    scheduler.add_job(
-        notify.cleanup_compressed_cache,
-        "interval",
-        minutes=60,
-        id="cleanup_compressed",
-        max_instances=1,
-        coalesce=True,
-    )
-    print(f"[SCHED] Очистка кэша сжатых картинок: раз в час.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")

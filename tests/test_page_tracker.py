@@ -1,4 +1,4 @@
-"""Проверка page_tracker: извлечение ID и состояние уведомлённых страниц."""
+"""Проверка page_tracker: состояние уведомлённых страниц."""
 import os
 import sys
 
@@ -10,76 +10,6 @@ except Exception:
     pass
 
 import page_tracker
-
-
-def test_extract_id_number():
-    props = {"ID": {"type": "number", "number": 123}}
-    assert page_tracker._extract_id(props, "ID") == "123"
-
-
-def test_extract_id_rich_text():
-    props = {"ID": {"type": "rich_text", "rich_text": [{"plain_text": "A-1"}]}}
-    assert page_tracker._extract_id(props, "ID") == "A-1"
-
-
-def test_extract_id_title():
-    props = {"ID": {"type": "title", "title": [{"plain_text": "T-9"}]}}
-    assert page_tracker._extract_id(props, "ID") == "T-9"
-
-
-def test_extract_id_unique_id():
-    props = {"ID": {"type": "unique_id", "unique_id": {"prefix": "REV", "number": 5}}}
-    assert page_tracker._extract_id(props, "ID") == "REV-5"
-
-
-def test_extract_id_unique_id_no_prefix():
-    props = {"ID": {"type": "unique_id", "unique_id": {"number": 7}}}
-    assert page_tracker._extract_id(props, "ID") == "7"
-
-
-def test_extract_id_formula_number():
-    props = {"ID": {"type": "formula", "formula": {"type": "number", "number": 7}}}
-    assert page_tracker._extract_id(props, "ID") == "7"
-
-
-def test_extract_id_formula_string():
-    props = {"ID": {"type": "formula", "formula": {"type": "string", "string": "X-1"}}}
-    assert page_tracker._extract_id(props, "ID") == "X-1"
-
-
-def test_extract_id_select():
-    props = {"ID": {"type": "select", "select": {"name": "X-1"}}}
-    assert page_tracker._extract_id(props, "ID") == "X-1"
-
-
-def test_extract_id_select_empty():
-    props = {"ID": {"type": "select", "select": None}}
-    assert page_tracker._extract_id(props, "ID") == ""
-
-
-def test_extract_id_unique_id_empty():
-    props = {"ID": {"type": "unique_id", "unique_id": {"number": None}}}
-    assert page_tracker._extract_id(props, "ID") == ""
-
-
-def test_extract_id_rich_text_empty():
-    props = {"ID": {"type": "rich_text", "rich_text": []}}
-    assert page_tracker._extract_id(props, "ID") == ""
-
-
-def test_extract_id_title_empty():
-    props = {"ID": {"type": "title", "title": []}}
-    assert page_tracker._extract_id(props, "ID") == ""
-
-
-def test_extract_id_missing():
-    assert page_tracker._extract_id({}, "ID") == ""
-
-
-def test_num_to_str_normalizes_integral_float():
-    assert page_tracker._num_to_str(123.0) == "123"
-    assert page_tracker._num_to_str(1.5) == "1.5"
-    assert page_tracker._num_to_str(7) == "7"
 
 
 def test_already_and_mark_notified():

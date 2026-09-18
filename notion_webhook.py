@@ -7,20 +7,17 @@ notion_webhook.py — приём и обработка вебхуков Notion.
 import hmac
 import hashlib
 import os
-import requests
-from datetime import datetime
 
 import notify
+import notion_api
 import page_tracker
-
-NOTION_API_VERSION = "2022-06-28"
+from logutil import ts
 
 _TRACKERS = {
     "claims": {
         "env": "CLAIMS_DB_ID",
         "label": "Получена новая заявка",
         "log_tag": "CLAIMS",
-        "filter": {"property": "Статус", "select": {"equals": "Новая"}},
         "status_field": "Статус",
         "status_value": "Новая",
     },
@@ -28,7 +25,6 @@ _TRACKERS = {
         "env": "REVIEWS_DB_ID",
         "label": "Получен новый отзыв",
         "log_tag": "REVIEWS",
-        "filter": None,
         "status_field": "",
         "status_value": "",
     },
@@ -56,36 +52,17 @@ def _tracker_for_parent(parent_id: str):
     return None, None
 
 
-def _notion_headers() -> dict:
-    api_key = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN") or ""
-    return {
-        "Authorization": f"Bearer {api_key}",
-        "Notion-Version": NOTION_API_VERSION,
-    }
-
-
 def _fetch_page(page_id: str) -> dict | None:
     try:
-        resp = requests.get(
-            f"https://api.notion.com/v1/pages/{page_id}",
-            headers=_notion_headers(),
-            timeout=15,
-        )
-        resp.raise_for_status()
-        return resp.json()
+        return notion_api.get_page(page_id)
     except Exception as e:
-        print(f"[NOTION-WH] ❌ Не удалось получить страницу {page_id[:8]}: {e}")
+        print(f"[NOTION-WH] {ts()} ❌ Не удалось получить страницу {page_id[:8]}: {e}")
         return None
-
-
-def _select_value(props: dict, field: str) -> str:
-    sel = props.get(field, {}).get("select")
-    return sel["name"] if sel else ""
 
 
 def handle_event(payload: dict) -> bool:
     """Обрабатывает событие. True — отвечаем 200, False — нужен повтор доставки."""
-    now = datetime.now().strftime("%H:%M:%S")
+    now = ts()
 
     if payload.get("type") != "page.created":
         return True
@@ -111,11 +88,11 @@ def handle_event(payload: dict) -> bool:
         return False
 
     props = page.get("properties", {})
-    if cfg["status_field"] and _select_value(props, cfg["status_field"]) != cfg["status_value"]:
+    if cfg["status_field"] and notion_api.get_select(props, cfg["status_field"]) != cfg["status_value"]:
         print(f"[{log_tag}] {now} ⏭️ Пропуск {page_id[:8]}: статус не «{cfg['status_value']}»")
         return True
 
-    id_value = page_tracker.extract_id(props, "ID") or page_id[:8]
+    id_value = notion_api.extract_id(props, "ID") or page_id[:8]
     message = f"[{id_value}] {cfg['label']}"
     if not notify.send_viber_message(message):
         print(f"[{log_tag}] {now} ❌ Не отправлено: {message}")

@@ -1,6 +1,5 @@
 """
-page_tracker.py — состояние уведомлённых страниц Notion и извлечение поля ID.
-Используется обработчиком вебхуков для дедупликации событий.
+page_tracker.py — состояние уведомлённых страниц Notion (дедупликация вебхуков).
 """
 
 import os
@@ -48,49 +47,6 @@ def _save_state() -> None:
 
 
 _load_state()
-
-
-def _num_to_str(val) -> str:
-    if isinstance(val, float) and val.is_integer():
-        return str(int(val))
-    return str(val)
-
-
-def _extract_id(props: dict, field: str) -> str:
-    prop = props.get(field)
-    if not prop:
-        return ""
-    ptype = prop.get("type", "")
-
-    if ptype == "number":
-        val = prop.get("number")
-        return _num_to_str(val) if val is not None else ""
-    if ptype in ("rich_text", "title"):
-        arr = prop.get(ptype, [])
-        return arr[0].get("plain_text", "") if arr else ""
-    if ptype == "unique_id":
-        uid = prop.get("unique_id") or {}
-        number = uid.get("number")
-        if number is None:
-            return ""
-        prefix = uid.get("prefix")
-        return f"{prefix}-{number}" if prefix else str(number)
-    if ptype == "formula":
-        formula = prop.get("formula") or {}
-        ftype = formula.get("type", "")
-        val = formula.get(ftype)
-        if val is None:
-            return ""
-        return _num_to_str(val)
-    if ptype == "select":
-        sel = prop.get("select")
-        return sel["name"] if sel else ""
-    return ""
-
-
-def extract_id(props: dict, field: str) -> str:
-    """Публичная обёртка над _extract_id."""
-    return _extract_id(props, field)
 
 
 def already_notified(state_key: str, page_id: str) -> bool:

@@ -1,9 +1,9 @@
 """
-dispatcher.py — Обработка входящих сообщений Viber.
+dispatcher.py — обработка входящих сообщений Viber.
 """
 
-from datetime import datetime
 import notify
+from logutil import ts
 
 
 def handle_conversation_started() -> None:
@@ -12,5 +12,5 @@ def handle_conversation_started() -> None:
 
 def handle_message(text: str) -> None:
     t = text.strip()
-    print(f"[DISPATCH] {datetime.now().strftime('%H:%M:%S')} text='{t}'")
+    print(f"[DISPATCH] {ts()} text='{t}'")
     notify.send_viber_message("Бот работает в автоматическом режиме. Напоминания приходят по расписанию.")

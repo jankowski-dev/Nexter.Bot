@@ -16,14 +16,13 @@ import notify
 from scheduler import start_scheduler
 
 
-REQUIRED_ENV = ["VIBER_TOKEN", "VIBER_USER_ID", "NOTION_API_KEY"]
-
-missing = [v for v in REQUIRED_ENV if not os.environ.get(v)]
-if not os.environ.get("NOTION_API_KEY") and not os.environ.get("NOTION_TOKEN"):
+missing = []
+if not os.environ.get("VIBER_TOKEN"):
+    missing.append("VIBER_TOKEN")
+if not os.environ.get("VIBER_USER_ID"):
+    missing.append("VIBER_USER_ID")
+if not (os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")):
     missing.append("NOTION_API_KEY или NOTION_TOKEN")
-else:
-    if "NOTION_API_KEY" in missing and os.environ.get("NOTION_TOKEN"):
-        missing.remove("NOTION_API_KEY")
 
 if missing:
     print(f"[STARTUP] ❌ КРИТИЧЕСКАЯ ОШИБКА: отсутствуют переменные: {', '.join(missing)}")

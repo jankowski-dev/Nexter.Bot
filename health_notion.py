@@ -1,13 +1,13 @@
 """
 health_notion.py — Notion API для привычек и распорядка дня.
-Конфигурация из health_config.yaml, API-ключ из NOTION_API_KEY/NOTION_TOKEN.
+Конфигурация из health_config.yaml.
 """
 
 import os
-import requests
 from datetime import datetime
 
-NOTION_API_VERSION = "2022-06-28"
+import notion_api
+from logutil import ts
 
 _config: dict = {}
 
@@ -22,29 +22,6 @@ def load_config(path: str = "health_config.yaml") -> dict:
     return _config
 
 
-def _notion_headers() -> dict:
-    api_key = os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN") or ""
-    return {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "Notion-Version": NOTION_API_VERSION,
-    }
-
-
-def _get_title(props: dict, field_name: str) -> str:
-    title_arr = props.get(field_name, {}).get("title", [])
-    return title_arr[0]["plain_text"] if title_arr else ""
-
-
-def _get_number(props: dict, field_name: str) -> float:
-    return props.get(field_name, {}).get("number", 0) or 0
-
-
-def _get_rich_text(props: dict, field_name: str) -> str:
-    rt_arr = props.get(field_name, {}).get("rich_text", [])
-    return rt_arr[0]["plain_text"] if rt_arr else ""
-
-
 def increment_all_habit_counters() -> None:
     """Каждый день в 22:00 увеличивает счётчик всех привычек на 1."""
     database_id = _config.get("notion", {}).get("habits_db_id", "")
@@ -53,41 +30,30 @@ def increment_all_habit_counters() -> None:
     name_field = _config.get("habits_fields", {}).get("name", "Название")
 
     if not database_id or not habits_list:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ habits не настроены.")
+        print(f"[HEALTH_NOTION] {ts()} ❌ habits не настроены.")
         return
-
-    url = f"https://api.notion.com/v1/databases/{database_id}/query"
-    headers = _notion_headers()
 
     try:
-        response = requests.post(url, headers=headers, json={"page_size": 100}, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        pages = notion_api.query_database(database_id)
     except Exception:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса привычек.")
+        print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка запроса привычек.")
         return
 
+    habits_lower = [h.lower() for h in habits_list]
     updated = 0
-    for page in data.get("results", []):
+    for page in pages:
         props = page.get("properties", {})
-        title = _get_title(props, name_field)
-        if title.lower() not in [h.lower() for h in habits_list]:
+        title = notion_api.get_title(props, name_field)
+        if title.lower() not in habits_lower:
             continue
-        current = _get_number(props, counter_field)
-        new_counter = int(current) + 1
+        new_counter = int(notion_api.get_number(props, counter_field)) + 1
         try:
-            resp = requests.patch(
-                f"https://api.notion.com/v1/pages/{page['id']}",
-                headers=headers,
-                json={"properties": {counter_field: {"number": new_counter}}},
-                timeout=15,
-            )
-            resp.raise_for_status()
+            notion_api.update_page(page["id"], {counter_field: {"number": new_counter}})
             updated += 1
         except Exception:
-            print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка +1 для {title}.")
+            print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка +1 для {title}.")
 
-    print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ✅ +1 к {updated} привычкам.")
+    print(f"[HEALTH_NOTION] {ts()} ✅ +1 к {updated} привычкам.")
 
 
 def get_schedule() -> list[dict]:
@@ -97,30 +63,19 @@ def get_schedule() -> list[dict]:
     time_field_hint = fields_cfg.get("time", "Время").strip()
 
     if not database_id:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ schedule_db_id не задан.")
+        print(f"[HEALTH_NOTION] {ts()} ❌ schedule_db_id не задан.")
         return []
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    url = f"https://api.notion.com/v1/databases/{database_id}/query"
-    headers = _notion_headers()
-
-    payload: dict = {"page_size": 100}
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        results = notion_api.query_database(database_id)
     except Exception:
-        print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса расписания.")
+        print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка запроса расписания.")
         return []
 
-    results = data.get("results", [])
     actual_time_field = time_field_hint
     date_field = ""
-
     if results:
-        sample_props = results[0].get("properties", {})
-        for pname, pval in sample_props.items():
+        for pname, pval in results[0].get("properties", {}).items():
             ptype = pval.get("type", "")
             if time_field_hint.lower() in pname.lower() and ptype in ("rich_text", "title"):
                 actual_time_field = pname
@@ -128,26 +83,14 @@ def get_schedule() -> list[dict]:
                 date_field = pname
 
     if date_field:
-        payload["filter"] = {
-            "property": date_field,
-            "date": {"equals": today},
-        }
+        today = datetime.now().strftime("%Y-%m-%d")
         print(f"[HEALTH_NOTION] Фильтр по дате: {date_field} = {today}")
-        results = []
-        has_more = True
-        start_cursor = None
         try:
-            while has_more:
-                if start_cursor:
-                    payload["start_cursor"] = start_cursor
-                response = requests.post(url, headers=headers, json=payload, timeout=15)
-                response.raise_for_status()
-                data = response.json()
-                results.extend(data.get("results", []))
-                has_more = data.get("has_more", False)
-                start_cursor = data.get("next_cursor")
+            results = notion_api.query_database(
+                database_id, filter={"property": date_field, "date": {"equals": today}}
+            )
         except Exception:
-            print(f"[HEALTH_NOTION] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка запроса с фильтром.")
+            print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка запроса с фильтром.")
             return []
 
     if actual_time_field != time_field_hint:
@@ -156,8 +99,8 @@ def get_schedule() -> list[dict]:
     items = []
     for page in results:
         props = page.get("properties", {})
-        name = _get_title(props, name_field) or _get_rich_text(props, name_field)
-        time_val = _get_rich_text(props, actual_time_field) or _get_title(props, actual_time_field)
+        name = notion_api.get_title(props, name_field) or notion_api.get_rich_text(props, name_field)
+        time_val = notion_api.get_rich_text(props, actual_time_field) or notion_api.get_title(props, actual_time_field)
         time_val = time_val.strip()
         if name and time_val:
             items.append({"name": name, "time": time_val})
