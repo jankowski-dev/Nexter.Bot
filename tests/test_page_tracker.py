@@ -270,6 +270,27 @@ def test_reviews_tracker_uses_reviews_config():
         page_tracker.poll_new_pages = original
 
 
+def test_load_state_backward_compat_bare_list():
+    import tempfile
+    import shutil
+    import json as _json
+
+    original_file = page_tracker._STATE_FILE
+    tmp_dir = tempfile.mkdtemp()
+    state_file = os.path.join(tmp_dir, "_notified_ids.json")
+    page_tracker._STATE_FILE = state_file
+    try:
+        with open(state_file, "w", encoding="utf-8") as f:
+            _json.dump(["a", "b"], f)
+        page_tracker._state.clear()
+        page_tracker._load_state()
+        assert page_tracker._state == {"claims": {"a", "b"}}
+    finally:
+        page_tracker._STATE_FILE = original_file
+        page_tracker._state.clear()
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 if __name__ == "__main__":
     os.environ.setdefault("NOTION_API_KEY", "test")
     for name, fn in sorted(globals().items()):

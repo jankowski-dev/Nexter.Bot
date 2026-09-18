@@ -25,7 +25,7 @@ def _verify_signature(signature: str, body: str) -> bool:
 def index():
     return jsonify({
         "status": "running",
-        "service": "Nexter.Bot — Habits, Schedule & Claims Tracker",
+        "service": "Nexter.Bot — Habits, Schedule, Claims & Reviews Tracker",
         "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
     })
 
