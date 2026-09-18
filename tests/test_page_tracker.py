@@ -180,6 +180,29 @@ def test_poll_send_failure_not_marked():
         _restore(originals)
 
 
+def test_poll_send_failure_then_success_retries():
+    os.environ["NOTION_API_KEY"] = "test"
+    sent = []
+    originals = _patch(sent, [_page("p1", 1)])
+    try:
+        page_tracker._state.clear()
+        page_tracker._state["claims"] = set()
+        page_tracker.notify.send_viber_message = lambda text: False
+        page_tracker.poll_new_pages(
+            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
+        )
+        assert page_tracker._state["claims"] == set()
+
+        page_tracker.notify.send_viber_message = lambda text: _fake_send(sent, text)
+        page_tracker.poll_new_pages(
+            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
+        )
+        assert sent == ["Получена новая заявка 1"]
+        assert page_tracker._state["claims"] == {"p1"}
+    finally:
+        _restore(originals)
+
+
 if __name__ == "__main__":
     os.environ.setdefault("NOTION_API_KEY", "test")
     for name, fn in sorted(globals().items()):

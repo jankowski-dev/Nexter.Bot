@@ -40,12 +40,17 @@ def _load_state() -> None:
 
 
 def _save_state() -> None:
+    tmp_path = _STATE_FILE + ".tmp"
     try:
-        tmp_path = _STATE_FILE + ".tmp"
         with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump({k: list(v) for k, v in _state.items()}, f)
         os.replace(tmp_path, _STATE_FILE)
     except Exception as e:
+        if os.path.isfile(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
         print(f"[TRACKER] ❌ Ошибка сохранения состояния: {e}")
 
 
@@ -61,6 +66,12 @@ def _notion_headers() -> dict:
     }
 
 
+def _num_to_str(val) -> str:
+    if isinstance(val, float) and val.is_integer():
+        return str(int(val))
+    return str(val)
+
+
 def _extract_id(props: dict, field: str) -> str:
     prop = props.get(field)
     if not prop:
@@ -69,7 +80,7 @@ def _extract_id(props: dict, field: str) -> str:
 
     if ptype == "number":
         val = prop.get("number")
-        return str(val) if val is not None else ""
+        return _num_to_str(val) if val is not None else ""
     if ptype in ("rich_text", "title"):
         arr = prop.get(ptype, [])
         return arr[0].get("plain_text", "") if arr else ""
@@ -86,7 +97,7 @@ def _extract_id(props: dict, field: str) -> str:
         val = formula.get(ftype)
         if val is None:
             return ""
-        return str(val)
+        return _num_to_str(val)
     if ptype == "select":
         sel = prop.get("select")
         return sel["name"] if sel else ""
@@ -177,7 +188,7 @@ def poll_new_pages(
 
 
 def reset_state(state_key: str) -> None:
-    """Сбрасывает набор уведомлённых для трекера (для тестов)."""
+    """Сбрасывает набор уведомлённых для трекера (используется тестовыми эндпоинтами)."""
     with _state_lock:
         _state[state_key] = set()
         _save_state()
