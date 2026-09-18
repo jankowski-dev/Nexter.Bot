@@ -163,7 +163,9 @@ def poll_new_pages(
         notify.send_viber_message(f"{label} {id_value}")
         print(f"[{log_tag}] {now} ✅ Уведомление: {label} {id_value}")
 
-    if new_count == 0:
+    if new_count:
+        print(f"[{log_tag}] {now} ✅ Новых: {new_count}")
+    else:
         print(f"[{log_tag}] {now} — новых нет.")
 
 

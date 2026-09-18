@@ -51,6 +51,31 @@ def test_extract_id_missing():
     assert page_tracker._extract_id({}, "ID") == ""
 
 
+def test_extract_id_formula_string():
+    props = {"ID": {"type": "formula", "formula": {"type": "string", "string": "X-1"}}}
+    assert page_tracker._extract_id(props, "ID") == "X-1"
+
+
+def test_extract_id_select_empty():
+    props = {"ID": {"type": "select", "select": None}}
+    assert page_tracker._extract_id(props, "ID") == ""
+
+
+def test_extract_id_unique_id_empty():
+    props = {"ID": {"type": "unique_id", "unique_id": {"number": None}}}
+    assert page_tracker._extract_id(props, "ID") == ""
+
+
+def test_extract_id_rich_text_empty():
+    props = {"ID": {"type": "rich_text", "rich_text": []}}
+    assert page_tracker._extract_id(props, "ID") == ""
+
+
+def test_extract_id_title_empty():
+    props = {"ID": {"type": "title", "title": []}}
+    assert page_tracker._extract_id(props, "ID") == ""
+
+
 class _FakeResponse:
     def __init__(self, payload):
         self._payload = payload
