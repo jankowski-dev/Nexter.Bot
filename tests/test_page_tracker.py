@@ -234,6 +234,42 @@ def test_save_state_cleans_tmp_on_failure():
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def test_claims_tracker_uses_claims_config():
+    import claims_tracker
+
+    captured = {}
+    original = page_tracker.poll_new_pages
+    page_tracker.poll_new_pages = lambda **kw: captured.update(kw)
+    try:
+        os.environ["CLAIMS_DB_ID"] = "cdb"
+        claims_tracker.check_new_claims()
+        assert captured["db_id"] == "cdb"
+        assert captured["label"] == "Получена новая заявка"
+        assert captured["state_key"] == "claims"
+        assert captured["id_field"] == "ID"
+        assert captured["filter"] == {"property": "Статус", "select": {"equals": "Новая"}}
+    finally:
+        page_tracker.poll_new_pages = original
+
+
+def test_reviews_tracker_uses_reviews_config():
+    import reviews_tracker
+
+    captured = {}
+    original = page_tracker.poll_new_pages
+    page_tracker.poll_new_pages = lambda **kw: captured.update(kw)
+    try:
+        os.environ["REVIEWS_DB_ID"] = "rdb"
+        reviews_tracker.check_new_reviews()
+        assert captured["db_id"] == "rdb"
+        assert captured["label"] == "Получен новый отзыв"
+        assert captured["state_key"] == "reviews"
+        assert captured["id_field"] == "ID"
+        assert captured.get("filter") is None
+    finally:
+        page_tracker.poll_new_pages = original
+
+
 if __name__ == "__main__":
     os.environ.setdefault("NOTION_API_KEY", "test")
     for name, fn in sorted(globals().items()):

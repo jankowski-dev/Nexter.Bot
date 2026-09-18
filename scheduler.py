@@ -111,6 +111,7 @@ def start_scheduler() -> None:
             id="check_claims",
             max_instances=1,
             coalesce=True,
+            next_run_time=datetime.now(_local_tz),
         )
         print(f"[SCHED] Мониторинг заявок: каждые {claims_tracker.POLL_INTERVAL_MINUTES} мин.")
     else:
@@ -124,6 +125,7 @@ def start_scheduler() -> None:
             id="check_reviews",
             max_instances=1,
             coalesce=True,
+            next_run_time=datetime.now(_local_tz),
         )
         print(f"[SCHED] Мониторинг отзывов: каждые {reviews_tracker.POLL_INTERVAL_MINUTES} мин.")
     else:
