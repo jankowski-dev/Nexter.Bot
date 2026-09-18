@@ -123,6 +123,54 @@ def _query_pages(db_id: str, filter: dict | None) -> list[dict]:
     return pages
 
 
+def extract_id(props: dict, field: str) -> str:
+    """Публичная обёртка над _extract_id."""
+    return _extract_id(props, field)
+
+
+def already_notified(state_key: str, page_id: str) -> bool:
+    with _state_lock:
+        return page_id in _state.get(state_key, set())
+
+
+def mark_notified(state_key: str, page_id: str) -> None:
+    with _state_lock:
+        _state.setdefault(state_key, set()).add(page_id)
+        _save_state()
+
+
+def ensure_warmed(
+    db_id: str,
+    state_key: str,
+    log_tag: str,
+    filter: dict | None = None,
+    exclude: str | None = None,
+) -> None:
+    """Инициализирует набор известных ID без отправки, если трекер ещё не прогрет.
+
+    `exclude` исключается из прогрева, чтобы текущее событие всё же было обработано.
+    """
+    if not db_id:
+        return
+    with _state_lock:
+        if state_key in _state:
+            return
+    try:
+        pages = _query_pages(db_id, filter)
+    except Exception as e:
+        print(f"[{log_tag}] ❌ Не удалось прогреть состояние: {e}")
+        return
+    with _state_lock:
+        if state_key in _state:
+            return
+        known = {p.get("id") for p in pages if p.get("id")}
+        if exclude:
+            known.discard(exclude)
+        _state[state_key] = known
+        _save_state()
+        print(f"[{log_tag}] 🌱 Состояние прогрето: {len(known)} ID.")
+
+
 def poll_new_pages(
     db_id: str,
     label: str,

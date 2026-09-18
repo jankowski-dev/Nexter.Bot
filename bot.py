@@ -54,6 +54,11 @@ if __name__ == "__main__":
     else:
         print(f"[STARTUP] ⚠️ REVIEWS_DB_ID не задан — мониторинг отзывов отключён.")
 
+    if os.environ.get("NOTION_WEBHOOK_SECRET"):
+        print(f"[STARTUP] ✅ Notion webhook: подпись проверяется.")
+    else:
+        print(f"[STARTUP] ⚠️ NOTION_WEBHOOK_SECRET не задан — вебхуки Notion принимаются без проверки подписи.")
+
     webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
     viber_token = os.environ.get("VIBER_TOKEN", "").strip()
     print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")

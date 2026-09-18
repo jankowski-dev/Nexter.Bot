@@ -8,6 +8,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 
 import notify
+import notion_webhook
 from dispatcher import handle_conversation_started, handle_message
 
 app = Flask(__name__)
@@ -91,6 +92,36 @@ def webhook():
             print(f"[WEBHOOK] {datetime.now().strftime('%H:%M:%S')} ❌ Ошибка: {e}")
 
         return jsonify({"status": 0})
+
+
+@app.route("/notion/webhook", methods=["POST"])
+def notion_webhook_route():
+    raw = request.get_data()
+    payload = request.get_json(silent=True) or {}
+
+    if "verification_token" in payload:
+        token = payload.get("verification_token", "")
+        print(f"[NOTION-WH] 🔑 verification_token = {token}")
+        return jsonify({"status": "ok"})
+
+    secret = os.environ.get("NOTION_WEBHOOK_SECRET", "")
+    if secret:
+        signature = request.headers.get("X-Notion-Signature", "")
+        if not notion_webhook.verify_signature(raw, signature, secret):
+            print(f"[NOTION-WH] {datetime.now().strftime('%H:%M:%S')} ❌ Неверная подпись.")
+            return jsonify({"status": "error"}), 403
+    else:
+        print(f"[NOTION-WH] {datetime.now().strftime('%H:%M:%S')} ⚠️ NOTION_WEBHOOK_SECRET не задан — подпись не проверяется.")
+
+    try:
+        ok = notion_webhook.handle_event(payload)
+    except Exception as e:
+        print(f"[NOTION-WH] ❌ Ошибка обработки: {e}")
+        return jsonify({"status": "error"}), 500
+
+    if not ok:
+        return jsonify({"status": "retry"}), 500
+    return jsonify({"status": "ok"})
 
 
 def _check_test_secret() -> bool:
