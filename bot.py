@@ -45,14 +45,14 @@ if __name__ == "__main__":
     start_scheduler()
 
     if os.environ.get("CLAIMS_DB_ID"):
-        print(f"[STARTUP] ✅ Мониторинг заявок включён (CLAIMS_DB_ID задан).")
+        print(f"[STARTUP] ✅ Уведомления по заявкам включены (CLAIMS_DB_ID задан).")
     else:
-        print(f"[STARTUP] ⚠️ CLAIMS_DB_ID не задан — мониторинг заявок отключён.")
+        print(f"[STARTUP] ⚠️ CLAIMS_DB_ID не задан — уведомления по заявкам отключены.")
 
     if os.environ.get("REVIEWS_DB_ID"):
-        print(f"[STARTUP] ✅ Мониторинг отзывов включён (REVIEWS_DB_ID задан).")
+        print(f"[STARTUP] ✅ Уведомления по отзывам включены (REVIEWS_DB_ID задан).")
     else:
-        print(f"[STARTUP] ⚠️ REVIEWS_DB_ID не задан — мониторинг отзывов отключён.")
+        print(f"[STARTUP] ⚠️ REVIEWS_DB_ID не задан — уведомления по отзывам отключены.")
 
     if os.environ.get("NOTION_WEBHOOK_SECRET"):
         print(f"[STARTUP] ✅ Notion webhook: подпись проверяется.")

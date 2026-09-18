@@ -51,13 +51,11 @@ def _patch(sent, marked, page, already=False):
     originals = (
         notion_webhook._fetch_page,
         notion_webhook.notify.send_viber_message,
-        page_tracker.ensure_warmed,
         page_tracker.already_notified,
         page_tracker.mark_notified,
     )
     notion_webhook._fetch_page = lambda pid: page
     notion_webhook.notify.send_viber_message = lambda text: (sent.append(text), True)[1]
-    page_tracker.ensure_warmed = lambda *a, **k: None
     page_tracker.already_notified = lambda *a, **k: already
     page_tracker.mark_notified = lambda sk, pid: marked.append((sk, pid))
     return originals
@@ -67,7 +65,6 @@ def _restore(originals):
     (
         notion_webhook._fetch_page,
         notion_webhook.notify.send_viber_message,
-        page_tracker.ensure_warmed,
         page_tracker.already_notified,
         page_tracker.mark_notified,
     ) = originals
@@ -88,7 +85,7 @@ def test_handle_event_notifies_new_review():
     originals = _patch(sent, marked, page)
     try:
         assert notion_webhook.handle_event(_payload("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")) is True
-        assert sent == ["Получен новый отзыв 42"]
+        assert sent == ["[42] Получен новый отзыв"]
         assert marked == [("reviews", "page1")]
     finally:
         _restore(originals)
@@ -137,7 +134,7 @@ def test_handle_event_notifies_new_claim():
     originals = _patch(sent, marked, page)
     try:
         assert notion_webhook.handle_event(_payload("365c8f4b499480c0a2dad34b5817f704")) is True
-        assert sent == ["Получена новая заявка 5"]
+        assert sent == ["[5] Получена новая заявка"]
         assert marked == [("claims", "page1")]
     finally:
         _restore(originals)

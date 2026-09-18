@@ -101,9 +101,6 @@ def handle_event(payload: dict) -> bool:
         return True
 
     log_tag = cfg["log_tag"]
-    db_id = os.environ.get(cfg["env"], "")
-
-    page_tracker.ensure_warmed(db_id, state_key, log_tag, cfg["filter"], exclude=page_id)
 
     if page_tracker.already_notified(state_key, page_id):
         print(f"[{log_tag}] {now} ↩️ Дубликат события {page_id[:8]}")
@@ -119,10 +116,11 @@ def handle_event(payload: dict) -> bool:
         return True
 
     id_value = page_tracker.extract_id(props, "ID") or page_id[:8]
-    if not notify.send_viber_message(f"{cfg['label']} {id_value}"):
-        print(f"[{log_tag}] {now} ❌ Не отправлено: {cfg['label']} {id_value}")
+    message = f"[{id_value}] {cfg['label']}"
+    if not notify.send_viber_message(message):
+        print(f"[{log_tag}] {now} ❌ Не отправлено: {message}")
         return False
 
     page_tracker.mark_notified(state_key, page_id)
-    print(f"[{log_tag}] {now} ✅ Вебхук: {cfg['label']} {id_value}")
+    print(f"[{log_tag}] {now} ✅ Вебхук: {message}")
     return True

@@ -1,4 +1,4 @@
-"""Проверка page_tracker: извлечение ID и логика уведомлений."""
+"""Проверка page_tracker: извлечение ID и состояние уведомлённых страниц."""
 import os
 import sys
 
@@ -42,17 +42,13 @@ def test_extract_id_formula_number():
     assert page_tracker._extract_id(props, "ID") == "7"
 
 
-def test_extract_id_select():
-    props = {"ID": {"type": "select", "select": {"name": "X-1"}}}
+def test_extract_id_formula_string():
+    props = {"ID": {"type": "formula", "formula": {"type": "string", "string": "X-1"}}}
     assert page_tracker._extract_id(props, "ID") == "X-1"
 
 
-def test_extract_id_missing():
-    assert page_tracker._extract_id({}, "ID") == ""
-
-
-def test_extract_id_formula_string():
-    props = {"ID": {"type": "formula", "formula": {"type": "string", "string": "X-1"}}}
+def test_extract_id_select():
+    props = {"ID": {"type": "select", "select": {"name": "X-1"}}}
     assert page_tracker._extract_id(props, "ID") == "X-1"
 
 
@@ -76,137 +72,28 @@ def test_extract_id_title_empty():
     assert page_tracker._extract_id(props, "ID") == ""
 
 
-class _FakeResponse:
-    def __init__(self, payload):
-        self._payload = payload
-        self.status_code = 200
-        self.text = ""
-
-    def json(self):
-        return self._payload
-
-    def raise_for_status(self):
-        pass
-
-
-def _page(pid, id_value):
-    return {"id": pid, "properties": {"ID": {"type": "number", "number": id_value}}}
-
-
-def _fake_send(sent, text):
-    sent.append(text)
-    return True
-
-
-def _patch(sent, pages):
-    original_post = page_tracker.requests.post
-    original_send = page_tracker.notify.send_viber_message
-    original_save = page_tracker._save_state
-    page_tracker.requests.post = lambda *a, **k: _FakeResponse(
-        {"results": pages, "has_more": False}
-    )
-    page_tracker.notify.send_viber_message = lambda text: _fake_send(sent, text)
-    page_tracker._save_state = lambda: None
-    return original_post, original_send, original_save
-
-
-def _restore(originals):
-    original_post, original_send, original_save = originals
-    page_tracker.requests.post = original_post
-    page_tracker.notify.send_viber_message = original_send
-    page_tracker._save_state = original_save
-
-
-def test_poll_first_run_warms_without_sending():
-    os.environ["NOTION_API_KEY"] = "test"
-    sent = []
-    originals = _patch(sent, [_page("p1", 1)])
-    try:
-        page_tracker._state.clear()
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert sent == []
-        assert page_tracker._state["claims"] == {"p1"}
-    finally:
-        _restore(originals)
-
-
-def test_poll_second_run_sends_only_new():
-    os.environ["NOTION_API_KEY"] = "test"
-    sent = []
-    originals = _patch(sent, [_page("p1", 1), _page("p2", 2)])
-    try:
-        page_tracker._state.clear()
-        page_tracker._state["claims"] = {"p1"}
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert sent == ["Получена новая заявка 2"]
-        assert page_tracker._state["claims"] == {"p1", "p2"}
-    finally:
-        _restore(originals)
-
-
-def test_poll_reset_state_sends_all():
-    os.environ["NOTION_API_KEY"] = "test"
-    sent = []
-    originals = _patch(sent, [_page("p1", 1)])
-    try:
-        page_tracker._state.clear()
-        page_tracker._state["claims"] = {"p1"}
-        page_tracker.reset_state("claims")
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert sent == ["Получена новая заявка 1"]
-    finally:
-        _restore(originals)
-
-
-def test_poll_send_failure_not_marked():
-    os.environ["NOTION_API_KEY"] = "test"
-    sent = []
-    originals = _patch(sent, [_page("p1", 1)])
-    try:
-        page_tracker._state.clear()
-        page_tracker._state["claims"] = set()
-        page_tracker.notify.send_viber_message = lambda text: False
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert page_tracker._state["claims"] == set()
-    finally:
-        _restore(originals)
-
-
-def test_poll_send_failure_then_success_retries():
-    os.environ["NOTION_API_KEY"] = "test"
-    sent = []
-    originals = _patch(sent, [_page("p1", 1)])
-    try:
-        page_tracker._state.clear()
-        page_tracker._state["claims"] = set()
-        page_tracker.notify.send_viber_message = lambda text: False
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert page_tracker._state["claims"] == set()
-
-        page_tracker.notify.send_viber_message = lambda text: _fake_send(sent, text)
-        page_tracker.poll_new_pages(
-            "db", "Получена новая заявка", "ID", "claims", "CLAIMS"
-        )
-        assert sent == ["Получена новая заявка 1"]
-        assert page_tracker._state["claims"] == {"p1"}
-    finally:
-        _restore(originals)
+def test_extract_id_missing():
+    assert page_tracker._extract_id({}, "ID") == ""
 
 
 def test_num_to_str_normalizes_integral_float():
     assert page_tracker._num_to_str(123.0) == "123"
     assert page_tracker._num_to_str(1.5) == "1.5"
     assert page_tracker._num_to_str(7) == "7"
+
+
+def test_already_and_mark_notified():
+    original_save = page_tracker._save_state
+    page_tracker._save_state = lambda: None
+    try:
+        page_tracker._state.clear()
+        assert page_tracker.already_notified("claims", "p1") is False
+        page_tracker.mark_notified("claims", "p1")
+        assert page_tracker.already_notified("claims", "p1") is True
+        assert page_tracker._state["claims"] == {"p1"}
+    finally:
+        page_tracker._save_state = original_save
+        page_tracker._state.clear()
 
 
 def test_save_state_cleans_tmp_on_failure():
@@ -231,43 +118,8 @@ def test_save_state_cleans_tmp_on_failure():
     finally:
         page_tracker.json.dump = original_dump
         page_tracker._STATE_FILE = original_file
+        page_tracker._state.clear()
         shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-def test_claims_tracker_uses_claims_config():
-    import claims_tracker
-
-    captured = {}
-    original = page_tracker.poll_new_pages
-    page_tracker.poll_new_pages = lambda **kw: captured.update(kw)
-    try:
-        os.environ["CLAIMS_DB_ID"] = "cdb"
-        claims_tracker.check_new_claims()
-        assert captured["db_id"] == "cdb"
-        assert captured["label"] == "Получена новая заявка"
-        assert captured["state_key"] == "claims"
-        assert captured["id_field"] == "ID"
-        assert captured["filter"] == {"property": "Статус", "select": {"equals": "Новая"}}
-    finally:
-        page_tracker.poll_new_pages = original
-
-
-def test_reviews_tracker_uses_reviews_config():
-    import reviews_tracker
-
-    captured = {}
-    original = page_tracker.poll_new_pages
-    page_tracker.poll_new_pages = lambda **kw: captured.update(kw)
-    try:
-        os.environ["REVIEWS_DB_ID"] = "rdb"
-        reviews_tracker.check_new_reviews()
-        assert captured["db_id"] == "rdb"
-        assert captured["label"] == "Получен новый отзыв"
-        assert captured["state_key"] == "reviews"
-        assert captured["id_field"] == "ID"
-        assert captured.get("filter") is None
-    finally:
-        page_tracker.poll_new_pages = original
 
 
 def test_load_state_backward_compat_bare_list():
@@ -292,7 +144,6 @@ def test_load_state_backward_compat_bare_list():
 
 
 if __name__ == "__main__":
-    os.environ.setdefault("NOTION_API_KEY", "test")
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
             fn()
