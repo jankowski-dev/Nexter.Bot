@@ -7,7 +7,7 @@ from logutil import ts
 
 
 def handle_conversation_started() -> None:
-    notify.send_viber_message("Привет! Я помогу отслеживать привычки и распорядок дня.")
+    notify.send_viber_message("Привет! Я присылаю напоминания по расписанию и уведомления о новых заявках и отзывах.")
 
 
 def handle_message(text: str) -> None:

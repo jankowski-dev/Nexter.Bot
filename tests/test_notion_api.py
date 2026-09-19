@@ -80,12 +80,10 @@ def test_getters():
     props = {
         "T": {"type": "title", "title": [{"plain_text": "Заголовок"}]},
         "R": {"type": "rich_text", "rich_text": [{"plain_text": "текст"}]},
-        "N": {"type": "number", "number": 5},
         "S": {"type": "select", "select": {"name": "Новая"}},
     }
     assert notion_api.get_title(props, "T") == "Заголовок"
     assert notion_api.get_rich_text(props, "R") == "текст"
-    assert notion_api.get_number(props, "N") == 5
     assert notion_api.get_select(props, "S") == "Новая"
     assert notion_api.get_title({}, "T") == ""
     assert notion_api.get_select({}, "S") == ""

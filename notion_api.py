@@ -44,12 +44,6 @@ def get_page(page_id: str) -> dict:
     return response.json()
 
 
-def update_page(page_id: str, properties: dict) -> None:
-    url = f"https://api.notion.com/v1/pages/{page_id}"
-    response = requests.patch(url, headers=notion_headers(), json={"properties": properties}, timeout=15)
-    response.raise_for_status()
-
-
 def get_title(props: dict, field: str) -> str:
     arr = props.get(field, {}).get("title", [])
     return arr[0].get("plain_text", "") if arr else ""
@@ -58,10 +52,6 @@ def get_title(props: dict, field: str) -> str:
 def get_rich_text(props: dict, field: str) -> str:
     arr = props.get(field, {}).get("rich_text", [])
     return arr[0].get("plain_text", "") if arr else ""
-
-
-def get_number(props: dict, field: str) -> float:
-    return props.get(field, {}).get("number", 0) or 0
 
 
 def get_select(props: dict, field: str) -> str:

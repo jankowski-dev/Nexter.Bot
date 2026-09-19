@@ -1,5 +1,5 @@
 """
-scheduler.py — APScheduler: напоминания распорядка и автоинкремент привычек.
+scheduler.py — APScheduler: напоминания распорядка дня.
 Расписание обновляется из Notion каждые 60 минут.
 """
 
@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import notify
-from health_notion import get_schedule, increment_all_habit_counters
+from health_notion import get_schedule
 from logutil import ts
 
 local_now = datetime.now()
@@ -22,12 +22,6 @@ print(f"[SCHED] Часовой пояс: UTC{_tz_offset:+d}")
 def _send_reminder(name: str) -> None:
     print(f"[SCHED] {ts()} 🔔 {name}")
     notify.send_viber_message(name)
-
-
-def _daily_habit_increment() -> None:
-    """Каждый день в 22:00 +1 ко всем привычкам."""
-    print(f"[SCHED] {ts()} 📊 +1 к привычкам...")
-    increment_all_habit_counters()
 
 
 def _refresh_schedule() -> None:
@@ -76,19 +70,6 @@ def start_scheduler() -> None:
         coalesce=True,
     )
     print(f"[SCHED] Обновление расписания: раз в час.")
-
-    scheduler.add_job(
-        _daily_habit_increment,
-        "cron",
-        hour=22,
-        minute=0,
-        id="daily_habit_increment",
-        replace_existing=True,
-        misfire_grace_time=600,
-        coalesce=True,
-        max_instances=1,
-    )
-    print(f"[SCHED] +1 к привычкам: каждый день в 22:00.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")

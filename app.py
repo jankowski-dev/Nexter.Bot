@@ -32,7 +32,7 @@ def _verify_viber_signature(signature: str, body: bytes) -> bool:
 def index():
     return jsonify({
         "status": "running",
-        "service": "Nexter.Bot — Habits, Schedule, Claims & Reviews Tracker",
+        "service": "Nexter.Bot — Schedule, Claims & Reviews Tracker",
         "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
     })
 
@@ -128,16 +128,6 @@ def _check_test_secret() -> bool:
         return True
     secret = request.args.get("secret", "")
     return secret == TEST_SECRET
-
-
-@app.route("/test/habits", methods=["GET"])
-def test_habits_increment():
-    if not _check_test_secret():
-        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
-
-    import health_notion
-    health_notion.increment_all_habit_counters()
-    return jsonify({"status": "ok", "message": "Счётчики привычек обновлены."})
 
 
 @app.route("/test/schedule", methods=["GET"])

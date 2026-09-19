@@ -1,5 +1,5 @@
 """
-health_notion.py — Notion API для привычек и распорядка дня.
+health_notion.py — Notion API для распорядка дня.
 Конфигурация из health_config.yaml.
 """
 
@@ -20,40 +20,6 @@ def load_config(path: str = "health_config.yaml") -> dict:
     with open(full_path, "r", encoding="utf-8") as f:
         _config = yaml.safe_load(f)
     return _config
-
-
-def increment_all_habit_counters() -> None:
-    """Каждый день в 22:00 увеличивает счётчик всех привычек на 1."""
-    database_id = _config.get("notion", {}).get("habits_db_id", "")
-    counter_field = _config.get("habits_fields", {}).get("counter", "Счетчик")
-    habits_list = _config.get("habits", [])
-    name_field = _config.get("habits_fields", {}).get("name", "Название")
-
-    if not database_id or not habits_list:
-        print(f"[HEALTH_NOTION] {ts()} ❌ habits не настроены.")
-        return
-
-    try:
-        pages = notion_api.query_database(database_id)
-    except Exception:
-        print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка запроса привычек.")
-        return
-
-    habits_lower = [h.lower() for h in habits_list]
-    updated = 0
-    for page in pages:
-        props = page.get("properties", {})
-        title = notion_api.get_title(props, name_field)
-        if title.lower() not in habits_lower:
-            continue
-        new_counter = int(notion_api.get_number(props, counter_field)) + 1
-        try:
-            notion_api.update_page(page["id"], {counter_field: {"number": new_counter}})
-            updated += 1
-        except Exception:
-            print(f"[HEALTH_NOTION] {ts()} ❌ Ошибка +1 для {title}.")
-
-    print(f"[HEALTH_NOTION] {ts()} ✅ +1 к {updated} привычкам.")
 
 
 def get_schedule() -> list[dict]:

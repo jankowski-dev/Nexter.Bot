@@ -1,21 +1,6 @@
 notion:
-  habits_db_id: "365c8f4b499480c0a2dad34b5817f704"
   schedule_db_id: "9dde37b6c18e4b9aba918609c2664ef2"
-
-habits_fields:
-  name: "Название"
-  counter: "Срок [P]"
 
 schedule_fields:
   name: "Название"
   time: "Время "
-
-habits:
-  - "Курение"
-  - "Алкоголь"
-  - "Газировка"
-  - "Кофе"
-  - "Переедание"
-  - "Мучное"
-  - "Сахар"
-  - "Сладкое"
