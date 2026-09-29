@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 
 import notion_api
+from bot_timezone import LOCAL_TZ
 from logutil import ts
 
 _config: dict = {}
@@ -49,7 +50,7 @@ def get_schedule() -> list[dict]:
                 date_field = pname
 
     if date_field:
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now(LOCAL_TZ).strftime("%Y-%m-%d")
         print(f"[HEALTH_NOTION] Фильтр по дате: {date_field} = {today}")
         try:
             results = notion_api.query_database(

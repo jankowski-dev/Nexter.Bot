@@ -3,20 +3,15 @@ scheduler.py — APScheduler: напоминания распорядка дня
 Расписание обновляется из Notion каждые 60 минут.
 """
 
-from datetime import datetime, timezone, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import notify
+from bot_timezone import LOCAL_TZ, TZ_NAME
 from health_notion import get_schedule
 from logutil import ts
 
-local_now = datetime.now()
-utc_now = datetime.utcnow()
-_tz_offset = round((local_now - utc_now).total_seconds() / 3600)
-_local_tz = timezone(timedelta(hours=_tz_offset))
-
-scheduler = BackgroundScheduler(timezone=_local_tz)
-print(f"[SCHED] Часовой пояс: UTC{_tz_offset:+d}")
+scheduler = BackgroundScheduler(timezone=LOCAL_TZ)
+print(f"[SCHED] Часовой пояс: {TZ_NAME}")
 
 
 def _send_reminder(name: str) -> None:
