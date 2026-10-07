@@ -11,7 +11,7 @@ from bot_timezone import LOCAL_TZ, TZ_NAME
 from health_notion import get_schedule
 from logutil import ts
 
-REFRESH_MINUTES = 1
+REFRESH_MINUTES = 5
 
 scheduler = BackgroundScheduler(timezone=LOCAL_TZ)
 print(f"[SCHED] Часовой пояс: {TZ_NAME}")
