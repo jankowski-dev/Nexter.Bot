@@ -1,6 +1,7 @@
 """
 scheduler.py — APScheduler: напоминания распорядка дня.
-Расписание обновляется из Notion каждые 60 минут.
+Расписание часто перечитывается из Notion, чтобы удалённые задачи
+не срабатывали. Интервал — REFRESH_MINUTES.
 """
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -9,6 +10,8 @@ import notify
 from bot_timezone import LOCAL_TZ, TZ_NAME
 from health_notion import get_schedule
 from logutil import ts
+
+REFRESH_MINUTES = 1
 
 scheduler = BackgroundScheduler(timezone=LOCAL_TZ)
 print(f"[SCHED] Часовой пояс: {TZ_NAME}")
@@ -59,12 +62,12 @@ def start_scheduler() -> None:
     scheduler.add_job(
         _refresh_schedule,
         "interval",
-        minutes=60,
+        minutes=REFRESH_MINUTES,
         id="refresh_schedule",
         max_instances=1,
         coalesce=True,
     )
-    print(f"[SCHED] Обновление расписания: раз в час.")
+    print(f"[SCHED] Обновление расписания: каждые {REFRESH_MINUTES} мин.")
 
     scheduler.start()
     print(f"[SCHED] Планировщик запущен.")
