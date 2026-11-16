@@ -1,16 +1,16 @@
 """
-app.py — Flask-приложение: вебхук Viber, вебхук Notion, health-check, тесты.
+app.py — Flask-приложение: health-check, Viber webhook и тестовые эндпоинты.
 """
 
-import hmac
 import hashlib
+import hmac
 import os
 
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 
+import nexter_api
 import notify
-import notion_webhook
-from dispatcher import handle_conversation_started, handle_message
+import scheduler
 from logutil import ts
 
 app = Flask(__name__)
@@ -20,7 +20,6 @@ TEST_SECRET = os.environ.get("TEST_SECRET", "")
 
 
 def _verify_viber_signature(signature: str, body: bytes) -> bool:
-    """HMAC-SHA256 от тела запроса с ключом VIBER_TOKEN."""
     token = os.environ.get("VIBER_TOKEN", "")
     if not token or not signature:
         return False
@@ -28,18 +27,27 @@ def _verify_viber_signature(signature: str, body: bytes) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
+def _check_test_secret() -> bool:
+    if not TEST_SECRET:
+        return False
+    return request.args.get("secret", "") == TEST_SECRET
+
+
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({
-        "status": "running",
-        "service": "Nexter.Bot — Schedule, Claims & Reviews Tracker",
-        "webhook_url": os.environ.get("WEBHOOK_URL", "не задан"),
-    })
+    return jsonify(
+        {
+            "status": "running",
+            "service": "Nexter.Bot — Viber task reminders",
+            "api": nexter_api.api_url(),
+            "apiConfigured": nexter_api.configured(),
+            "scheduler": scheduler.status(),
+        }
+    )
 
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    print(f"[APP] {ts()} GET /ping")
     return "pong", 200
 
 
@@ -47,102 +55,66 @@ def ping():
 def webhook():
     if request.method == "HEAD":
         return "", 200
-
     if request.method == "GET":
-        print(f"[APP] {ts()} GET /webhook — ok")
         return jsonify({"status": "ok"})
 
-    if request.method == "POST":
-        print(f"[APP] {ts()} POST /webhook")
-        raw = request.get_data()
-        signature = request.headers.get("X-Viber-Content-Signature", "")
-
-        if not _verify_viber_signature(signature, raw):
-            print(f"[WEBHOOK] {ts()} ❌ Неверная подпись.")
-            return jsonify({"status": "error"}), 403
-
-        try:
-            data = request.get_json(silent=True)
-            if data:
-                event_type = data.get("event", "unknown")
-
-                if event_type == "message":
-                    msg = data.get("message", {})
-                    text = msg.get("text", "").strip()
-                    print(f"[WEBHOOK] {ts()} 📨 message: '{text}' (len={len(text)})")
-                    if text:
-                        try:
-                            handle_message(text)
-                        except Exception as e:
-                            print(f"[WEBHOOK] Ошибка в handle_message: {e}")
-                            notify.send_viber_message("⚠️ Ошибка. Попробуй ещё раз.")
-
-                elif event_type == "conversation_started":
-                    print(f"[WEBHOOK] {ts()} Разговор начат.")
-                    handle_conversation_started()
-
-                elif event_type == "webhook":
-                    print(f"[WEBHOOK] {ts()} Webhook event.")
-
-                else:
-                    print(f"[WEBHOOK] {ts()} Событие: {event_type}")
-
-        except Exception as e:
-            print(f"[WEBHOOK] {ts()} ❌ Ошибка: {e}")
-
-        return jsonify({"status": 0})
-
-
-@app.route("/notion/webhook", methods=["POST"])
-def notion_webhook_route():
     raw = request.get_data()
-    payload = request.get_json(silent=True) or {}
+    signature = request.headers.get("X-Viber-Content-Signature", "")
+    if not _verify_viber_signature(signature, raw):
+        return jsonify({"status": "error"}), 403
 
-    if "verification_token" in payload:
-        token = payload.get("verification_token", "")
-        print(f"[NOTION-WH] 🔑 verification_token = {token}")
-        return jsonify({"status": "ok"})
-
-    secret = os.environ.get("NOTION_WEBHOOK_SECRET", "")
-    if secret:
-        signature = request.headers.get("X-Notion-Signature", "")
-        if not notion_webhook.verify_signature(raw, signature, secret):
-            print(f"[NOTION-WH] {ts()} ❌ Неверная подпись.")
-            return jsonify({"status": "error"}), 403
-    else:
-        print(f"[NOTION-WH] {ts()} ⚠️ NOTION_WEBHOOK_SECRET не задан — подпись не проверяется.")
-
-    try:
-        ok = notion_webhook.handle_event(payload)
-    except Exception as e:
-        print(f"[NOTION-WH] ❌ Ошибка обработки: {e}")
-        return jsonify({"status": "error"}), 500
-
-    if not ok:
-        return jsonify({"status": "retry"}), 500
-    return jsonify({"status": "ok"})
+    data = request.get_json(silent=True) or {}
+    event = data.get("event", "unknown")
+    if event == "conversation_started":
+        notify.send_viber_message("Nexter.Bot на связи. Напоминания о задачах включены.")
+    elif event == "message":
+        text = (data.get("message") or {}).get("text", "").strip().lower()
+        if text in {"тест", "test", "ping"}:
+            notify.send_viber_message("Тест Viber: бот на связи ✅")
+        else:
+            notify.send_viber_message(
+                "Я присылаю напоминания о задачах за 5 минут. Напишите «тест» для проверки."
+            )
+    return jsonify({"status": 0})
 
 
-def _check_test_secret() -> bool:
-    if not TEST_SECRET:
-        return True
-    secret = request.args.get("secret", "")
-    return secret == TEST_SECRET
-
-
-@app.route("/test/schedule", methods=["GET"])
-def test_schedule():
+@app.route("/test/status", methods=["GET"])
+def test_status():
     if not _check_test_secret():
-        return jsonify({"error": "forbidden", "message": "Неверный test secret"}), 403
+        return jsonify({"error": "forbidden"}), 403
+    return jsonify(
+        {
+            "status": "ok",
+            "apiConfigured": nexter_api.configured(),
+            "scheduler": scheduler.status(),
+        }
+    )
 
-    import health_notion
-    items = health_notion.get_schedule()
-    count = int(request.args.get("count", "1"))
-    for item in items[:count]:
-        notify.send_viber_message(item["name"])
-    return jsonify({
-        "status": "ok",
-        "total": len(items),
-        "sent": len(items[:count]),
-        "items": items,
-    })
+
+@app.route("/test/notify", methods=["GET", "POST"])
+def test_notify():
+    if not _check_test_secret():
+        return jsonify({"error": "forbidden"}), 403
+    text = request.args.get("text") or "Тест Viber: бот на связи ✅"
+    notify.send_viber_message(text)
+    return jsonify({"status": "ok", "text": text})
+
+
+@app.route("/test/poll", methods=["GET", "POST"])
+def test_poll():
+    if not _check_test_secret():
+        return jsonify({"error": "forbidden"}), 403
+    minutes = request.args.get("minutes")
+    try:
+        window = int(minutes) if minutes else None
+    except ValueError:
+        return jsonify({"error": "minutes must be an integer"}), 400
+    reminded = scheduler.poll_once(window)
+    return jsonify(
+        {
+            "status": "ok",
+            "sent": len(reminded),
+            "tasks": reminded,
+            "scheduler": scheduler.status(),
+        }
+    )

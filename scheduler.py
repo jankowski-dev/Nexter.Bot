@@ -1,75 +1,122 @@
 """
-scheduler.py — APScheduler: напоминания распорядка дня.
-Расписание часто перечитывается из Notion, чтобы удалённые задачи
-не срабатывали. Интервал — REFRESH_MINUTES.
+scheduler.py — опрос API Nexter и напоминания в Viber.
 """
+
+import os
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
+import nexter_api
 import notify
 from bot_timezone import LOCAL_TZ, TZ_NAME
-from health_notion import get_schedule
 from logutil import ts
 
-REFRESH_MINUTES = 5
+POLL_SECONDS = int(os.environ.get("REMINDER_POLL_SECONDS", "30"))
+LEAD_MINUTES = int(os.environ.get("REMINDER_LEAD_MINUTES", "5"))
 
 scheduler = BackgroundScheduler(timezone=LOCAL_TZ)
 print(f"[SCHED] Часовой пояс: {TZ_NAME}")
 
+_sent: dict[str, datetime] = {}
+_last_poll_at: datetime | None = None
+_last_error: str | None = None
+_last_count = 0
 
-def _send_reminder(name: str) -> None:
-    print(f"[SCHED] {ts()} 🔔 {name}")
-    notify.send_viber_message(name)
+
+def _prune(now: datetime) -> None:
+    cutoff = now - timedelta(minutes=15)
+    for task_id, due_at in list(_sent.items()):
+        if due_at < cutoff:
+            _sent.pop(task_id, None)
 
 
-def _refresh_schedule() -> None:
-    """Перечитывает расписание из Notion и обновляет cron-задачи."""
-    print(f"[SCHED] {ts()} — обновление расписания...")
+def _format_due(due_at: datetime) -> str:
+    return due_at.astimezone(LOCAL_TZ).strftime("%H:%M")
+
+
+def _message(item: dict, due_at: datetime) -> str:
+    title = str(item.get("title") or "Задача")
+    tags = item.get("tags") or []
+    suffix = f"\nТеги: {', '.join(tags)}" if tags else ""
+    return f"⏰ Через {LEAD_MINUTES} минут: {title}\nСрок: {_format_due(due_at)}{suffix}"
+
+
+def poll_once(minutes: int | None = None) -> list[dict]:
+    """Один проход опроса. Возвращает задачи, по которым отправлено напоминание."""
+    global _last_poll_at, _last_error, _last_count
+
+    _last_poll_at = datetime.now(LOCAL_TZ)
+    window = minutes or LEAD_MINUTES
+
+    if not nexter_api.configured():
+        _last_error = "NEXTER_BOT_TOKEN или NEXTER_API_URL не заданы"
+        print(f"[SCHED] {ts()} ⚠️ {_last_error}")
+        return []
+
     try:
-        items = get_schedule()
-    except Exception:
-        print(f"[SCHED] {ts()} ⚠️ Ошибка загрузки расписания.")
-        return
+        items = nexter_api.fetch_upcoming(window)
+        _last_error = None
+    except Exception as error:
+        _last_error = str(error)
+        print(f"[SCHED] {ts()} ⚠️ Ошибка опроса: {error}")
+        return []
 
-    active_ids = set()
+    _last_count = len(items)
+    now = datetime.now(LOCAL_TZ)
+    _prune(now)
+    reminded: list[dict] = []
+
     for item in items:
-        try:
-            h, m = map(int, item["time"].split(":"))
-        except ValueError:
+        task_id = str(item.get("id") or "")
+        raw_due = item.get("dueAt")
+        if not task_id or not raw_due:
             continue
-        job_id = f"reminder_{item['name']}_{item['time']}".replace(" ", "_")
-        active_ids.add(job_id)
-        scheduler.add_job(
-            lambda name=item["name"]: _send_reminder(name),
-            "cron",
-            hour=h,
-            minute=m,
-            id=job_id,
-            replace_existing=True,
-            misfire_grace_time=300,
-            coalesce=True,
-            max_instances=1,
-        )
-        print(f"[SCHED] {item['time']} — {item['name']}")
+        try:
+            due_at = datetime.fromisoformat(str(raw_due).replace("Z", "+00:00"))
+        except ValueError:
+            print(f"[SCHED] {ts()} ⚠️ Некорректный dueAt у задачи {task_id}")
+            continue
 
-    for job in scheduler.get_jobs():
-        if job.id.startswith("reminder_") and job.id not in active_ids:
-            job.remove()
-            print(f"[SCHED] Удалена: {job.id}")
+        if task_id in _sent:
+            continue
+        if due_at <= now:
+            continue
+
+        text = _message(item, due_at)
+        print(f"[SCHED] {ts()} 🔔 {text.replace(chr(10), ' | ')}")
+        notify.send_viber_message(text)
+        _sent[task_id] = due_at
+        reminded.append(item)
+
+    return reminded
+
+
+def status() -> dict:
+    return {
+        "timezone": TZ_NAME,
+        "pollSeconds": POLL_SECONDS,
+        "leadMinutes": LEAD_MINUTES,
+        "lastPollAt": _last_poll_at.isoformat() if _last_poll_at else None,
+        "lastError": _last_error,
+        "lastCount": _last_count,
+        "sentCount": len(_sent),
+    }
+
+
+def reset_sent() -> None:
+    _sent.clear()
 
 
 def start_scheduler() -> None:
     scheduler.add_job(
-        _refresh_schedule,
+        poll_once,
         "interval",
-        minutes=REFRESH_MINUTES,
-        id="refresh_schedule",
+        seconds=POLL_SECONDS,
+        id="poll_tasks",
         max_instances=1,
         coalesce=True,
     )
-    print(f"[SCHED] Обновление расписания: каждые {REFRESH_MINUTES} мин.")
-
     scheduler.start()
-    print(f"[SCHED] Планировщик запущен.")
-
-    _refresh_schedule()
+    print(f"[SCHED] Опрос API каждые {POLL_SECONDS} сек., окно {LEAD_MINUTES} мин.")
+    poll_once()

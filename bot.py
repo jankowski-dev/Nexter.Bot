@@ -1,83 +1,60 @@
 """
-bot.py — Точка входа.
+bot.py — точка входа Nexter.Bot.
 """
 
-import sys
-sys.stdout.reconfigure(line_buffering=True)
-
 import os
-import requests
+import sys
 from datetime import datetime
+
+import requests
 from waitress import serve
 
-from app import app, PORT, TEST_SECRET
-import health_notion
-import notify
-from scheduler import start_scheduler
+sys.stdout.reconfigure(line_buffering=True)
 
+from app import PORT, TEST_SECRET, app
+from scheduler import start_scheduler
 
 missing = []
 if not os.environ.get("VIBER_TOKEN"):
     missing.append("VIBER_TOKEN")
 if not os.environ.get("VIBER_USER_ID"):
     missing.append("VIBER_USER_ID")
-if not (os.environ.get("NOTION_API_KEY") or os.environ.get("NOTION_TOKEN")):
-    missing.append("NOTION_API_KEY или NOTION_TOKEN")
+if not (os.environ.get("NEXTER_BOT_TOKEN") or "").strip():
+    missing.append("NEXTER_BOT_TOKEN")
 
 if missing:
-    print(f"[STARTUP] ❌ КРИТИЧЕСКАЯ ОШИБКА: отсутствуют переменные: {', '.join(missing)}")
-    print("[STARTUP] Завершение работы.")
+    print(f"[STARTUP] ❌ Отсутствуют переменные: {', '.join(missing)}")
     sys.exit(1)
 
-print(f"[STARTUP] ✅ Все обязательные переменные заданы.")
+print("[STARTUP] ✅ Обязательные переменные заданы.")
+print(f"[STARTUP] Nexter API: {os.environ.get('NEXTER_API_URL') or 'https://nexterapi-production.up.railway.app'}")
 
-if __name__ == "__main__":
-    health_notion.load_config()
 
-    print(f"[STARTUP] {datetime.now().strftime('%H:%M:%S')} 🚀 Запуск на порту {PORT}...")
-
-    if TEST_SECRET:
-        print(f"[STARTUP] 🔐 Тестовые эндпоинты защищены.")
-    else:
-        print(f"[STARTUP] ⚠️ TEST_SECRET не задан — тестовые эндпоинты открыты!")
-
-    start_scheduler()
-
-    if os.environ.get("CLAIMS_DB_ID"):
-        print(f"[STARTUP] ✅ Уведомления по заявкам включены (CLAIMS_DB_ID задан).")
-    else:
-        print(f"[STARTUP] ⚠️ CLAIMS_DB_ID не задан — уведомления по заявкам отключены.")
-
-    if os.environ.get("REVIEWS_DB_ID"):
-        print(f"[STARTUP] ✅ Уведомления по отзывам включены (REVIEWS_DB_ID задан).")
-    else:
-        print(f"[STARTUP] ⚠️ REVIEWS_DB_ID не задан — уведомления по отзывам отключены.")
-
-    if os.environ.get("NOTION_WEBHOOK_SECRET"):
-        print(f"[STARTUP] ✅ Notion webhook: подпись проверяется.")
-    else:
-        print(f"[STARTUP] ⚠️ NOTION_WEBHOOK_SECRET не задан — вебхуки Notion принимаются без проверки подписи.")
-
+def _register_webhook() -> None:
     webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
     viber_token = os.environ.get("VIBER_TOKEN", "").strip()
-    print(f"[STARTUP] WEBHOOK_URL = '{webhook_url}'")
-    print(f"[STARTUP] VIBER_TOKEN задан: {bool(viber_token)}")
-    if webhook_url and viber_token:
-        try:
-            r = requests.post(
-                "https://chatapi.viber.com/pa/set_webhook",
-                headers={"X-Viber-Auth-Token": viber_token},
-                json={"url": webhook_url, "event_types": ["message", "conversation_started", "delivered", "seen", "failed", "subscribed", "unsubscribed"]},
-                timeout=15,
-            )
-            print(f"[STARTUP] Webhook HTTP {r.status_code}")
-            print(f"[STARTUP] Webhook body: {r.text}")
-        except Exception as e:
-            print(f"[STARTUP] ⚠️ Webhook registration FAILED: {e}")
-    else:
-        print(f"[STARTUP] ❌❌❌ WEBHOOK_URL или VIBER_TOKEN не заданы — кнопки работать НЕ БУДУТ!")
+    if not webhook_url or not viber_token:
+        print("[STARTUP] ⚠️ WEBHOOK_URL не задан — входящие сообщения Viber отключены.")
+        return
+    try:
+        response = requests.post(
+            "https://chatapi.viber.com/pa/set_webhook",
+            headers={"X-Viber-Auth-Token": viber_token},
+            json={
+                "url": webhook_url,
+                "event_types": ["message", "conversation_started", "delivered", "seen", "failed"],
+            },
+            timeout=15,
+        )
+        print(f"[STARTUP] Webhook HTTP {response.status_code}")
+    except Exception as error:
+        print(f"[STARTUP] ⚠️ Webhook registration failed: {error}")
 
-    notify.send_viber_message("Бот запущен.")
 
-    print(f"[STARTUP] 🌐 Waitress WSGI-сервер запущен (8 потоков).")
+if __name__ == "__main__":
+    print(f"[STARTUP] {datetime.now().strftime('%H:%M:%S')} 🚀 Запуск на порту {PORT}...")
+    if not TEST_SECRET:
+        print("[STARTUP] ⚠️ TEST_SECRET не задан — тестовые эндпоинты отключены.")
+    _register_webhook()
+    start_scheduler()
     serve(app, host="0.0.0.0", port=PORT, threads=8)
