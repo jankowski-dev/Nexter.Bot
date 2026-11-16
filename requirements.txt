@@ -3,3 +3,4 @@ requests>=2.31
 waitress>=2.1
 apscheduler>=3.10
 tzdata>=2024.1
+faster-whisper>=1.1
