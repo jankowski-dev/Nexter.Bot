@@ -7,6 +7,7 @@ import hmac
 import os
 
 from flask import Flask, jsonify, request
+import requests
 
 import nexter_api
 import notify
@@ -68,7 +69,42 @@ def webhook():
     if event == "conversation_started":
         notify.send_viber_message("Nexter.Bot на связи. Напоминания о задачах включены.")
     elif event == "message":
-        text = (data.get("message") or {}).get("text", "").strip().lower()
+        message = data.get("message") or {}
+        sender = (data.get("sender") or {}).get("id", "")
+        owner = os.environ.get("VIBER_USER_ID", "")
+        media = message.get("media")
+        print(
+            f"[WEBHOOK] {ts()} message type={message.get('type')!r} "
+            f"file={message.get('file_name')!r} size={message.get('file_size')!r} "
+            f"duration={message.get('duration')!r} media={bool(media)} "
+            f"sender_owner={sender == owner}"
+        )
+
+        if message.get("type") == "file" and media:
+            if sender != owner:
+                notify.send_viber_message("Неизвестный отправитель.")
+            else:
+                try:
+                    response = requests.get(
+                        media,
+                        headers={"X-Viber-Auth-Token": os.environ.get("VIBER_TOKEN", "")},
+                        timeout=30,
+                    )
+                    print(
+                        f"[WEBHOOK] {ts()} file download HTTP {response.status_code} "
+                        f"content-type={response.headers.get('content-type')!r} "
+                        f"bytes={len(response.content)}"
+                    )
+                    notify.send_viber_message(
+                        f"Файл получен: {message.get('file_name') or 'без имени'}, "
+                        f"{len(response.content)} байт"
+                    )
+                except Exception as error:
+                    print(f"[WEBHOOK] {ts()} file download failed: {error}")
+                    notify.send_viber_message("Не удалось скачать файл.")
+            return jsonify({"status": 0})
+
+        text = str(message.get("text") or "").strip().lower()
         if text in {"тест", "test", "ping"}:
             notify.send_viber_message("Тест Viber: бот на связи ✅")
         else:
