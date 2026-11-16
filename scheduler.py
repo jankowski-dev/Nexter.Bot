@@ -31,15 +31,10 @@ def _prune(now: datetime) -> None:
             _sent.pop(task_id, None)
 
 
-def _format_due(due_at: datetime) -> str:
-    return due_at.astimezone(LOCAL_TZ).strftime("%H:%M")
-
-
-def _message(item: dict, due_at: datetime) -> str:
+def _message(item: dict) -> str:
+    """Компактный шаблон: эмодзи будильника и текст задачи."""
     title = str(item.get("title") or "Задача")
-    tags = item.get("tags") or []
-    suffix = f"\nТеги: {', '.join(tags)}" if tags else ""
-    return f"⏰ Через {LEAD_MINUTES} минут: {title}\nСрок: {_format_due(due_at)}{suffix}"
+    return f"⏰ {title}"
 
 
 def poll_once(minutes: int | None = None) -> list[dict]:
@@ -83,7 +78,7 @@ def poll_once(minutes: int | None = None) -> list[dict]:
         if due_at <= now:
             continue
 
-        text = _message(item, due_at)
+        text = _message(item)
         print(f"[SCHED] {ts()} 🔔 {text.replace(chr(10), ' | ')}")
         notify.send_viber_message(text)
         _sent[task_id] = due_at

@@ -25,8 +25,7 @@ def test_poll_sends_once():
     assert len(first) == 1
     assert second == []
     assert len(sent) == 1
-    assert "Проверить отчёт" in sent[0]
-    assert "Теги: work" in sent[0]
+    assert sent[0] == "⏰ Проверить отчёт"
 
 
 def test_poll_skips_past_tasks():
