@@ -103,6 +103,7 @@ def index():
             "service": "Nexter.Bot — Viber task reminders",
             "api": nexter_api.api_url(),
             "apiConfigured": nexter_api.configured(),
+            "maxAudioMb": max_audio_mb(),
             "scheduler": scheduler.status(),
         }
     )
@@ -204,6 +205,7 @@ def test_status():
         {
             "status": "ok",
             "apiConfigured": nexter_api.configured(),
+            "maxAudioMb": max_audio_mb(),
             "scheduler": scheduler.status(),
         }
     )
