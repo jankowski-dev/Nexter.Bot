@@ -15,6 +15,7 @@ import nexter_api
 import notify
 import scheduler
 import transcriber
+from audio_limits import max_audio_bytes, max_audio_mb
 from logutil import ts
 
 app = Flask(__name__)
@@ -40,7 +41,6 @@ AUDIO_TYPES = {
     ".wav": "audio/wav",
     ".webm": "audio/webm",
 }
-MAX_AUDIO_BYTES = 2_400_000
 
 
 def _audio_mime(filename: str) -> str | None:
@@ -156,12 +156,14 @@ def webhook():
                 response = requests.get(
                     media,
                     headers={"X-Viber-Auth-Token": os.environ.get("VIBER_TOKEN", "")},
-                    timeout=30,
+                    timeout=60,
                 )
                 if response.status_code != 200:
                     raise RuntimeError(f"Viber media HTTP {response.status_code}")
-                if len(response.content) > MAX_AUDIO_BYTES:
-                    notify.send_viber_message("Аудио слишком большое. Максимум 2.4 МБ.")
+                if len(response.content) > max_audio_bytes():
+                    notify.send_viber_message(
+                        f"Аудио слишком большое. Максимум {max_audio_mb()} МБ."
+                    )
                     return jsonify({"status": 0})
 
                 token = str(data.get("message_token") or message.get("message_token") or "")
