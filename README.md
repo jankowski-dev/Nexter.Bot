@@ -1,6 +1,8 @@
 # Nexter.Bot — Viber task reminders
 
-Python-сервис, который опрашивает Nexter API и присылает напоминание в Viber за 5 минут до срока задачи.
+Python-сервис, который работает только с Nexter System: опрашивает Nexter API, присылает напоминания о задачах и принимает аудио для заметок. Notion не используется.
+
+Архитектура: [`docs/architecture.md`](docs/architecture.md).
 
 ## Переменные
 
