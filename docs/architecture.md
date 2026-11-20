@@ -40,4 +40,4 @@ Supported audio: `m4a`, `mp4`, `mp3`, `ogg`, `opus`, `wav`, `webm`. The local li
 ## Removed
 
 - Notion API client, Notion webhook, claims/reviews trackers and the Notion schedule database.
-- Any `NOTION_*` environment variables are unused and can be deleted from the hosting service.
+- Production `NOTION_TOKEN`, `NOTION_WEBHOOK_SECRET`, `CLAIMS_DB_ID` and `REVIEWS_DB_ID` were deleted from the hosting service.
